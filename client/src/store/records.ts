@@ -1,10 +1,10 @@
 // 레코드 저장소의 공용 읽기·쓰기. 도메인 모듈(routines.ts, sessions.ts 등)이 쓴다.
-import type { Exercise, Routine, Session, Settings } from '../../../shared/model.ts';
+import type { Exercise, GuideNote, Routine, Session, Settings } from '../../../shared/model.ts';
 import { SEED_EXERCISES } from '../../../shared/seed-exercises.ts';
 import type { Ctx } from '../context.ts';
 import {
   commit, getRecord, listDirty, listRecords, req, runTx,
-  type CommitOps, type StoredExercise, type StoredRoutine, type StoredSession, type StoredSettings,
+  type CommitOps, type StoredExercise, type StoredGuideNote, type StoredRoutine, type StoredSession, type StoredSettings,
 } from './db.ts';
 import { getMeta } from './meta.ts';
 
@@ -12,6 +12,8 @@ export const getExercise = (db: IDBDatabase, id: string) => getRecord<StoredExer
 export const getRoutine = (db: IDBDatabase, id: string) => getRecord<StoredRoutine>(db, 'routines', id);
 export const getSession = (db: IDBDatabase, id: string) => getRecord<StoredSession>(db, 'sessions', id);
 export const getSettingsRecord = (db: IDBDatabase) => getRecord<StoredSettings>(db, 'settings', 'settings');
+export const getGuideNote = (db: IDBDatabase, id: string) => getRecord<StoredGuideNote>(db, 'guideNotes', id);
+export const listAllGuideNotes = (db: IDBDatabase) => listRecords<StoredGuideNote>(db, 'guideNotes');
 
 export const listAllExercises = (db: IDBDatabase) => listRecords<StoredExercise>(db, 'exercises');
 export const listAllRoutines = (db: IDBDatabase) => listRecords<StoredRoutine>(db, 'routines');
@@ -34,13 +36,14 @@ export interface RecordOps {
   routines?: (Routine | StoredRoutine)[];
   sessions?: (Session | StoredSession)[];
   settings?: (Settings | StoredSettings)[];
+  guideNotes?: (GuideNote | StoredGuideNote)[];
 }
 
 /** 레코드를 stamp 해서 한 트랜잭션으로 저장한다(HLC 상태 포함). 저장된(stamp 된) 레코드를 돌려준다. */
 export async function saveRecords<T extends RecordOps>(ctx: Ctx, ops: T): Promise<{ [K in keyof T]: StoredAll[K & keyof StoredAll][] }> {
   const stamped: CommitOps = {};
   const out: Record<string, unknown[]> = {};
-  for (const k of ['exercises', 'routines', 'sessions', 'settings'] as const) {
+  for (const k of ['exercises', 'routines', 'sessions', 'settings', 'guideNotes'] as const) {
     const list = ops[k];
     if (!list) continue;
     const s = list.map((r) => stamp(ctx, r));
@@ -57,6 +60,7 @@ interface StoredAll {
   routines: StoredRoutine;
   sessions: StoredSession;
   settings: StoredSettings;
+  guideNotes: StoredGuideNote;
 }
 
 /**

@@ -46,7 +46,7 @@ test('저장소를 다시 열어도 데이터가 남는다 (업그레이드 경�
   const db2 = await openFitnessDb(name);
   assert.deepEqual(await getExercise(db2, e.id), e);
   assert.equal(await getMeta(db2, 'cursor'), 7);
-  assert.deepEqual([...db2.objectStoreNames].sort(), ['exercises', 'meta', 'routines', 'sessions', 'settings']);
+  assert.deepEqual([...db2.objectStoreNames].sort(), ['exercises', 'guideNotes', 'meta', 'routines', 'sessions', 'settings']);
 });
 
 test('dirty 인 레코드만 listDirty 에 나온다', async () => {

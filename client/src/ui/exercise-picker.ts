@@ -7,6 +7,7 @@ import { BODY_PART_LABEL } from '../labels.ts';
 import type { StoredExercise } from '../store/db.ts';
 import { clear, h } from './dom.ts';
 import { showToast } from './toast.ts';
+import { openGuideSheet } from './guide-sheet.ts';
 
 /** 종목을 고르면 그 id, 닫으면 null */
 export function pickExercise(ctx: Ctx): Promise<string | null> {
@@ -84,6 +85,7 @@ export function pickExercise(ctx: Ctx): Promise<string | null> {
         h(
           'div',
           { class: 'item-controls' },
+          h('button', { class: 'btn btn-ghost', type: 'button', text: '가이드', attrs: { 'aria-label': `${ex.name} 가이드` }, onClick: () => void openGuideSheet(ctx, ex.id, ex.name) }),
           h('button', { class: 'btn btn-ghost', type: 'button', text: '이력', attrs: { 'aria-label': `${ex.name} 이력` }, onClick: () => { finish(null); location.hash = `#/exercise/${ex.id}`; } }),
           h('button', { class: 'btn btn-ghost', type: 'button', text: '수정', attrs: { 'aria-label': `${ex.name} 이름 수정` }, onClick: () => { editingId = ex.id; void renderList(); } }),
           h('button', {

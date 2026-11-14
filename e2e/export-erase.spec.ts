@@ -25,7 +25,7 @@ test.describe('내보내기와 전체 삭제', () => {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '데이터 내보내기' }).click()]);
     const app = JSON.parse(readFileSync((await download.path())!, 'utf8'));
     expect(app.format).toBe('fitness-export');
-    expect(app.version).toBe(1);
+    expect(app.version).toBe(2);
 
     const server = cliExport() as typeof app;
     const mine = (x: typeof app) => ({

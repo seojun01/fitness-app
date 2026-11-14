@@ -274,3 +274,25 @@ select.input { height: var(--tap); }
 .btn-light:hover { background: var(--text); filter: brightness(0.95); }
 .check[aria-pressed='false'] { color: var(--text-muted); }
 .banner { border: 1px solid var(--accent); }
+
+/* ── 운동 가이드 (기능 2) ── */
+.entry-name { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.info-btn { flex: none; width: var(--tap); height: var(--tap); border: none; background: none; cursor: pointer; position: relative; color: var(--bg); font-weight: 800; font-family: Georgia, serif; font-style: italic; }
+.info-btn::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--text-muted); z-index: -1; }
+.info-btn { z-index: 0; }
+.guide-sheet { width: min(94vw, 560px); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sheet-head .sheet-title { margin: 0; }
+.guide-section { margin-bottom: var(--space-4); }
+.guide-section .section-title { margin-top: var(--space-3); }
+.guide-list { margin: 0; padding-left: 1.4rem; display: flex; flex-direction: column; gap: var(--space-2); }
+.guide-muscles { margin: 0 0 var(--space-1); }
+.guide-safety { margin-top: var(--space-4); }
+.guide-add { margin-top: var(--space-4); }
+.filter-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--space-3); }
+.chip-group { border: 0; padding: 0; margin: 0 0 var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip-group legend { margin-bottom: var(--space-2); width: 100%; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: 999px; background: var(--surface); cursor: pointer; }
+.chip input { width: 18px; height: 18px; accent-color: var(--accent); }
+.chip:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 360px) { .filter-row { grid-template-columns: 1fr; } }

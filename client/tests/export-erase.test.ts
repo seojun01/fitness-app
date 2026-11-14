@@ -33,7 +33,7 @@ test('내보내기: fitness-export 형식, 툼스톤·version·updatedBy·dirty 
   await deleteRoutine(ctx, gone.id);
   const out = await exportAllData(ctx.db, '2026-11-14T12:00:00.000Z');
   assert.equal(out.format, 'fitness-export');
-  assert.equal(out.version, 1);
+  assert.equal(out.version, 2);
   assert.equal(out.exportedAt, '2026-11-14T12:00:00.000Z');
   assert.deepEqual(out.routines.map((x) => x.id), [r.id]);
   assert.equal(out.sessions.length, 1);

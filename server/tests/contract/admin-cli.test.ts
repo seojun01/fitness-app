@@ -60,7 +60,7 @@ test('export: 툼스톤과 내부 필드를 빼고 내보낸다', async () => {
   assert.equal(r.code, 0);
   const data = JSON.parse(readFileSync(out, 'utf8'));
   assert.equal(data.format, 'fitness-export');
-  assert.equal(data.version, 1);
+  assert.equal(data.version, 2);
   assert.equal(data.exercises.length, 1);
   assert.equal(data.routines.length, 1);
   assert.equal(data.sessions.length, 0);

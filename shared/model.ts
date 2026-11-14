@@ -1,8 +1,9 @@
 // 도메인 타입과 검증. 서버와 클라이언트가 같은 규칙을 쓴다 (data-model.md).
 // erasableSyntaxOnly: enum·namespace 를 쓰지 않는다.
+import { isMuscleId, type MuscleId } from './muscles.ts';
 
-export type RecordType = 'exercise' | 'routine' | 'session' | 'settings';
-export const RECORD_TYPES: readonly RecordType[] = ['exercise', 'routine', 'session', 'settings'];
+export type RecordType = 'exercise' | 'routine' | 'session' | 'settings' | 'guideNote';
+export const RECORD_TYPES: readonly RecordType[] = ['exercise', 'routine', 'session', 'settings', 'guideNote'];
 
 export type BodyPart = 'chest' | 'back' | 'shoulders' | 'legs' | 'arms' | 'core' | 'cardio' | 'other';
 export const BODY_PARTS: readonly BodyPart[] = ['chest', 'back', 'shoulders', 'legs', 'arms', 'core', 'cardio', 'other'];
@@ -70,7 +71,15 @@ export interface Settings extends SyncFields {
   restSeconds?: number;
 }
 
-export type AnyRecord = Exercise | Routine | Session | Settings;
+/** 직접 만든 종목의 가이드 글 (기능 2). id 는 종목 id 와 같다 */
+export interface GuideNote extends SyncFields {
+  cues: string[];
+  mistakes: string[];
+  primaryMuscles: MuscleId[];
+  secondaryMuscles: MuscleId[];
+}
+
+export type AnyRecord = Exercise | Routine | Session | Settings | GuideNote;
 
 export const SETTINGS_ID = 'settings';
 
@@ -89,6 +98,13 @@ export const REST_MIN = 15;
 export const REST_MAX = 600;
 export const REST_STEP = 15;
 export const REST_DEFAULT = 60;
+export const NOTE_ITEMS_MAX = 10;
+export const NOTE_ITEM_MAX = 200;
+export const NOTE_MUSCLES_MAX = 6;
+
+/** 기본 종목(시드)의 id 접두어. 시드 id 는 모두 이것으로 시작한다 (shared/tests/seed.test.ts 가 확인) */
+export const BUILTIN_ID_PREFIX = '5eed0000-0000-4000-8000-';
+export const isBuiltinExerciseId = (id: unknown): boolean => typeof id === 'string' && id.startsWith(BUILTIN_ID_PREFIX);
 
 /** 가장 먼저 지는 고정 버전. 기본 종목(시드)이 쓴다 (research R15) */
 export const SEED_VERSION = '000000000000000-000000-seed';
@@ -100,6 +116,7 @@ export interface FieldError {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+
 
 export const isUuid = (s: unknown): s is string => typeof s === 'string' && UUID_RE.test(s);
 export const isIso = (s: unknown): s is string => typeof s === 'string' && ISO_RE.test(s) && !Number.isNaN(Date.parse(s));
@@ -124,6 +141,7 @@ const KEYS: Record<RecordType, readonly string[]> = {
   routine: ['id', 'name', 'items', 'createdAt', 'deleted', 'version', 'updatedBy'],
   session: ['id', 'status', 'routineId', 'routineName', 'startedAt', 'endedAt', 'startedBy', 'entries', 'deleted', 'version', 'updatedBy'],
   settings: ['id', 'weightUnit', 'restSeconds', 'deleted', 'version', 'updatedBy'],
+  guideNote: ['id', 'cues', 'mistakes', 'primaryMuscles', 'secondaryMuscles', 'deleted', 'version', 'updatedBy'],
 };
 
 type Obj = Record<string, unknown>;
@@ -145,6 +163,7 @@ export function validateRecord(type: string, record: unknown): FieldError[] {
   if (t === 'settings') {
     if (r.id !== SETTINGS_ID) add('id', 'settings_id');
   } else if (!isUuid(r.id)) add('id', 'uuid');
+  else if (t === 'guideNote' && isBuiltinExerciseId(r.id)) add('id', 'builtin_exercise');
   if (typeof r.deleted !== 'boolean') add('deleted', 'type');
   if (typeof r.version !== 'string' || r.version === '') add('version', 'required');
   if (typeof r.updatedBy !== 'string' || r.updatedBy === '') add('updatedBy', 'required');
@@ -184,6 +203,35 @@ export function validateRecord(type: string, record: unknown): FieldError[] {
     else {
       if (r.entries.length > ENTRIES_MAX) add('entries', 'max');
       r.entries.forEach((e, i) => validateEntry(e, i, add));
+    }
+  } else if (t === 'guideNote') {
+    for (const key of ['cues', 'mistakes'] as const) {
+      const list = r[key];
+      if (!Array.isArray(list)) {
+        add(key, 'type');
+        continue;
+      }
+      if (list.length > NOTE_ITEMS_MAX) add(key, 'max');
+      list.forEach((item, i) => {
+        if (typeof item !== 'string') return add(`${key}[${i}]`, 'type');
+        const n = cpLength(item.trim());
+        if (n < 1 || n > NOTE_ITEM_MAX) add(`${key}[${i}]`, 'length');
+      });
+    }
+    for (const key of ['primaryMuscles', 'secondaryMuscles'] as const) {
+      const list = r[key];
+      if (!Array.isArray(list)) {
+        add(key, 'type');
+        continue;
+      }
+      if (list.length > NOTE_MUSCLES_MAX) add(key, 'max');
+      list.forEach((m, i) => {
+        if (!isMuscleId(m)) add(`${key}[${i}]`, 'enum');
+      });
+      if (new Set(list).size !== list.length) add(key, 'duplicate');
+    }
+    if (Array.isArray(r.primaryMuscles) && Array.isArray(r.secondaryMuscles) && r.secondaryMuscles.some((m) => (r.primaryMuscles as unknown[]).includes(m))) {
+      add('secondaryMuscles', 'overlap');
     }
   } else {
     if (r.weightUnit !== 'kg' && r.weightUnit !== 'lb') add('weightUnit', 'enum');

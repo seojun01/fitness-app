@@ -20,6 +20,7 @@ import { clear, h } from './dom.ts';
 import { pickExercise } from './exercise-picker.ts';
 import { createRestTimerBar, type RestTimerBar } from './rest-timer-bar.ts';
 import { emptyState } from './states.ts';
+import { openGuideSheet } from './guide-sheet.ts';
 
 const INDEX_KEY = 'fitness.sessionIndex';
 
@@ -375,7 +376,12 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
           h(
             'div',
             { class: 'entry-head' },
-            h('h2', { class: 'entry-title entry-title-lg', text: name }),
+            h(
+              'div',
+              { class: 'entry-name' },
+              h('h2', { class: 'entry-title entry-title-lg', text: name }),
+              h('button', { class: 'info-btn', type: 'button', text: 'i', attrs: { 'aria-label': `${name} 가이드` }, onClick: () => void openGuideSheet(ctx, entry.exerciseId, name) }),
+            ),
             h('button', {
               class: 'btn btn-ghost',
               type: 'button',

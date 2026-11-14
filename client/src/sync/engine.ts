@@ -45,7 +45,7 @@ export interface SyncEngine {
 
 class UnauthorizedError extends Error {}
 
-const STORE_OF: Record<RecordType, RecordStore> = { exercise: 'exercises', routine: 'routines', session: 'sessions', settings: 'settings' };
+const STORE_OF: Record<RecordType, RecordStore> = { exercise: 'exercises', routine: 'routines', session: 'sessions', settings: 'settings', guideNote: 'guideNotes' };
 type Change = { type: RecordType; record: AnyRecord };
 type Page = { changes: Change[]; cursor: number; hasMore: boolean };
 type Stored = AnyRecord & { dirty: 0 | 1 };

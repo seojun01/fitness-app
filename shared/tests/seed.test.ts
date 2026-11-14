@@ -28,3 +28,9 @@ test('모든 부위(가슴·등·어깨·하체·팔·코어·유산소)에 종�
   const parts = new Set(SEED_EXERCISES.map((e) => e.bodyPart));
   for (const p of ['chest', 'back', 'shoulders', 'legs', 'arms', 'core', 'cardio']) assert.ok(parts.has(p as never), p);
 });
+
+test('모든 기본 종목 id 는 BUILTIN_ID_PREFIX 로 시작한다 (가이드 노트가 기본 종목을 거부할 때 쓴다)', async () => {
+  const { BUILTIN_ID_PREFIX, isBuiltinExerciseId } = await import('../model.ts');
+  for (const e of SEED_EXERCISES) assert.ok(e.id.startsWith(BUILTIN_ID_PREFIX) && isBuiltinExerciseId(e.id), e.name);
+  assert.equal(isBuiltinExerciseId(crypto.randomUUID()), false);
+});

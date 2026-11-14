@@ -3,12 +3,12 @@ import { buildExport, type FitnessExport } from '../../shared/export.ts';
 import { SEED_VERSION } from '../../shared/model.ts';
 import { SEED_EXERCISES } from '../../shared/seed-exercises.ts';
 import type { Ctx } from './context.ts';
-import { getSettingsRecord, listAllExercises, listAllRoutines, listAllSessions, saveRecords } from './store/records.ts';
+import { getSettingsRecord, listAllExercises, listAllGuideNotes, listAllRoutines, listAllSessions, saveRecords } from './store/records.ts';
 
 /** 이 기기의 모든 운동 데이터(삭제 표시 제외)를 내보내기 형식으로 */
 export async function exportAllData(db: IDBDatabase, exportedAt: string = new Date().toISOString()): Promise<FitnessExport> {
-  const [exercises, routines, sessions, settings] = await Promise.all([listAllExercises(db), listAllRoutines(db), listAllSessions(db), getSettingsRecord(db)]);
-  return buildExport({ exercises, routines, sessions, settings: settings ?? null }, exportedAt);
+  const [exercises, routines, sessions, settings, guideNotes] = await Promise.all([listAllExercises(db), listAllRoutines(db), listAllSessions(db), getSettingsRecord(db), listAllGuideNotes(db)]);
+  return buildExport({ exercises, routines, sessions, settings: settings ?? null, guideNotes }, exportedAt);
 }
 
 type Tombstone = { id: string; deleted: true };
@@ -19,7 +19,7 @@ const tomb = (id: string): Tombstone => ({ id, deleted: true });
  * 기본 종목은 앱의 일부라 남기고, 사용자가 고치거나 지운 기본 종목은 기본값으로 되돌려 다른 기기에도 퍼뜨린다.
  */
 export async function eraseAllData(ctx: Ctx): Promise<void> {
-  const [exercises, routines, sessions, settings] = await Promise.all([listAllExercises(ctx.db), listAllRoutines(ctx.db), listAllSessions(ctx.db), getSettingsRecord(ctx.db)]);
+  const [exercises, routines, sessions, settings, guideNotes] = await Promise.all([listAllExercises(ctx.db), listAllRoutines(ctx.db), listAllSessions(ctx.db), getSettingsRecord(ctx.db), listAllGuideNotes(ctx.db)]);
   const defaults = new Map(SEED_EXERCISES.map((e) => [e.id, e]));
   const exerciseOps = [];
   for (const e of exercises) {
@@ -35,6 +35,7 @@ export async function eraseAllData(ctx: Ctx): Promise<void> {
     routines: routines.map((r) => tomb(r.id)) as never[],
     sessions: sessions.map((s) => tomb(s.id)) as never[],
     settings: (settings ? [tomb('settings')] : []) as never[],
+    guideNotes: guideNotes.map((n) => tomb(n.id)) as never[],
   });
 }
 

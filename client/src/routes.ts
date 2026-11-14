@@ -1,6 +1,9 @@
 // 화면 등록. 스토리를 구현할 때마다 여기에 화면을 더한다.
 import { route } from './app.ts';
 import { exerciseHistoryScreen } from './ui/exercise-history.ts';
+import { guideListScreen } from './ui/guide-list.ts';
+import { guideNoteEditorScreen } from './ui/guide-note-editor.ts';
+import { guideScreen } from './ui/guide-screen.ts';
 import { historyListScreen } from './ui/history-list.ts';
 import { pairingScreen } from './ui/pairing.ts';
 import { routineDetailScreen } from './ui/routine-detail.ts';
@@ -23,5 +26,8 @@ const sessionRoute = (ctx: Parameters<Parameters<typeof route>[1]>[0], p: Record
 route('/session', sessionRoute);
 route('/session/:index', sessionRoute);
 route('/session/summary/:id', (ctx, p) => sessionSummaryScreen(ctx, p.id!));
+route('/guides', (ctx) => guideListScreen(ctx));
+route('/guides/:id', (ctx, p) => guideScreen(ctx, p.id!));
+route('/guides/:id/edit', (ctx, p) => guideNoteEditorScreen(ctx, p.id!));
 route('/settings', (ctx) => settingsScreen(ctx));
 route('/pair', (ctx) => pairingScreen(ctx));

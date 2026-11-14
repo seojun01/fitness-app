@@ -122,3 +122,32 @@ test.describe('접근성: 기능 3 화면 (어두운·밝은 테마 모두)', ()
     });
   }
 });
+
+test.describe('접근성: 기능 2 가이드 화면 (두 테마)', () => {
+  for (const mode of ['dark', 'light'] as const) {
+    test(`${mode}: 가이드 탭·가이드 화면·가이드 시트·노트 편집`, async ({ page }) => {
+      await page.addInitScript((m) => localStorage.setItem('fitness.theme', m), mode);
+      await openApp(page, '#/guides');
+      await expect(page.getByRole('list', { name: '가이드 목록' })).toBeVisible();
+      await audit(page, `${mode} 가이드 탭`);
+      await page.getByRole('list', { name: '가이드 목록' }).getByRole('button', { name: '스쿼트', exact: true }).click();
+      await expect(page.locator('.guide ol')).toBeVisible();
+      await audit(page, `${mode} 가이드 화면`);
+      await createRoutineViaUi(page, '가이드 루틴', ['데드리프트']);
+      await row(page, '가이드 루틴').getByRole('button', { name: '가이드 루틴 시작' }).click();
+      await page.getByRole('button', { name: '데드리프트 가이드' }).click();
+      await expect(page.getByRole('dialog', { name: '데드리프트' }).locator('ol')).toBeVisible();
+      await audit(page, `${mode} 가이드 시트`);
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: '종목 추가', exact: true }).click();
+      const picker = page.getByRole('dialog', { name: '종목 선택' });
+      await picker.getByText('직접 종목 만들기').click();
+      await picker.getByLabel('종목 이름').fill('접근성 종목');
+      await picker.getByRole('button', { name: '만들기' }).click();
+      await page.getByRole('button', { name: '접근성 종목 가이드' }).click();
+      await page.getByRole('dialog', { name: '접근성 종목' }).getByRole('button', { name: '가이드 작성' }).click();
+      await expect(page.getByLabel('자세 요점 (한 줄에 하나)')).toBeVisible();
+      await audit(page, `${mode} 노트 편집`);
+    });
+  }
+});

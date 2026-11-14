@@ -130,3 +130,41 @@ test('settings.restSeconds: 선택, 정수, 15~600, 15의 배수', () => {
   for (const v of [10, 601, 50, 0, 62.5, '60']) bad('settings', { id: 'settings', weightUnit: 'kg', restSeconds: v, ...base }, 'restSeconds');
   ok('settings', { id: 'settings', weightUnit: 'kg', ...base });
 });
+
+// ── guideNote (기능 2) ──
+const CUSTOM = U(77);
+const note = (o: Record<string, unknown> = {}) => ({ id: CUSTOM, cues: ['등을 곧게'], mistakes: [], primaryMuscles: ['quads'], secondaryMuscles: [], ...base, ...o });
+
+test('guideNote: 유효한 노트와 빈 목록', () => {
+  ok('guideNote', note());
+  ok('guideNote', note({ cues: [], mistakes: [], primaryMuscles: [], secondaryMuscles: [] }));
+});
+
+test('guideNote: 요점·실수는 0~10개, 항목은 공백 제거 후 1~200자', () => {
+  ok('guideNote', note({ cues: Array(10).fill('a') }));
+  bad('guideNote', note({ cues: Array(11).fill('a') }), 'cues');
+  bad('guideNote', note({ mistakes: ['   '] }), 'mistakes[0]');
+  bad('guideNote', note({ mistakes: ['가'.repeat(201)] }), 'mistakes[0]');
+  ok('guideNote', note({ mistakes: ['😀'.repeat(200)] }));
+  bad('guideNote', note({ cues: 'x' }), 'cues');
+  bad('guideNote', note({ cues: [3] }), 'cues[0]');
+});
+
+test('guideNote: 근육은 목록 안·중복 없음·각 0~6개·주동근과 보조근 겹침 금지', () => {
+  bad('guideNote', note({ primaryMuscles: ['neck'] }), 'primaryMuscles[0]');
+  bad('guideNote', note({ primaryMuscles: ['quads', 'quads'] }), 'primaryMuscles');
+  bad('guideNote', note({ secondaryMuscles: ['abs', 'obliques', 'erectors', 'glutes', 'quads', 'hamstrings', 'calves'], primaryMuscles: [] }), 'secondaryMuscles');
+  const errs = validateRecord('guideNote', note({ primaryMuscles: ['quads'], secondaryMuscles: ['quads'] }));
+  assert.ok(errs.some((e) => e.field === 'secondaryMuscles' && e.rule === 'overlap'));
+});
+
+test('guideNote: 기본 종목 id 는 거부하고(builtin_exercise), 모르는 필드도 거부한다', () => {
+  const errs = validateRecord('guideNote', note({ id: '5eed0000-0000-4000-8000-000000000001' }));
+  assert.ok(errs.some((e) => e.field === 'id' && e.rule === 'builtin_exercise'));
+  bad('guideNote', note({ video: 'x' }), 'video');
+});
+
+test('guideNote: 툼스톤은 공통 필드만으로 통과 (기본 종목 id 툼스톤은 거부)', () => {
+  ok('guideNote', { id: CUSTOM, deleted: true, version: 'v2', updatedBy: 'dev' });
+  bad('guideNote', { id: '5eed0000-0000-4000-8000-000000000001', deleted: true, version: 'v2', updatedBy: 'dev' }, 'id');
+});

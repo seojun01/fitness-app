@@ -1,8 +1,8 @@
-// IndexedDB `fitness` (버전 1). 모든 쓰기는 트랜잭션이 complete 된 뒤에만 resolve 된다 (헌법 II).
-import type { Exercise, Routine, Session, Settings } from '../../../shared/model.ts';
+// IndexedDB `fitness` (버전 2: guideNotes 추가). 모든 쓰기는 트랜잭션이 complete 된 뒤에만 resolve 된다 (헌법 II).
+import type { Exercise, GuideNote, Routine, Session, Settings } from '../../../shared/model.ts';
 
 export const DB_NAME = 'fitness';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /** dirty: 1 = 서버에 아직 반영되지 않은 변경 */
 export type Stored<T> = T & { dirty: 0 | 1 };
@@ -10,15 +10,16 @@ export type StoredExercise = Stored<Exercise>;
 export type StoredRoutine = Stored<Routine>;
 export type StoredSession = Stored<Session>;
 export type StoredSettings = Stored<Settings>;
+export type StoredGuideNote = Stored<GuideNote>;
 
-export const RECORD_STORES = ['exercises', 'routines', 'sessions', 'settings'] as const;
+export const RECORD_STORES = ['exercises', 'routines', 'sessions', 'settings', 'guideNotes'] as const;
 export type RecordStore = (typeof RECORD_STORES)[number];
 export const ALL_STORES: string[] = [...RECORD_STORES, 'meta'];
 
 export function openFitnessDb(name: string = DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open(name, DB_VERSION);
-    open.onupgradeneeded = (ev) => migrate(open.result, ev.oldVersion);
+    open.onupgradeneeded = (ev) => migrate(open.result, ev.oldVersion, open.transaction!);
     open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error ?? new Error('IndexedDB 를 열 수 없어요'));
     open.onblocked = () => reject(new Error('다른 탭이 데이터베이스를 쓰고 있어요'));
@@ -26,9 +27,9 @@ export function openFitnessDb(name: string = DB_NAME): Promise<IDBDatabase> {
 }
 
 /** 버전별 업그레이드 경로. 스키마를 바꾸면 DB_VERSION 을 올리고 여기에 단계를 추가한다. */
-function migrate(db: IDBDatabase, oldVersion: number): void {
+function migrate(db: IDBDatabase, oldVersion: number, tx: IDBTransaction): void {
   if (oldVersion < 1) {
-    for (const name of RECORD_STORES) {
+    for (const name of ['exercises', 'routines', 'sessions', 'settings'] as const) {
       const store = db.createObjectStore(name, { keyPath: 'id' });
       store.createIndex('byDirty', 'dirty'); // 0 | 1 (boolean 은 IndexedDB 키가 될 수 없다)
       if (name === 'sessions') {
@@ -37,6 +38,12 @@ function migrate(db: IDBDatabase, oldVersion: number): void {
       }
     }
     db.createObjectStore('meta'); // 바깥 키(문자열)
+  }
+  if (oldVersion < 2) {
+    // 기능 2: 가이드 노트. 업데이트 전 앱이 모르는 guideNote 를 건너뛰고 cursor 만 넘겼을 수 있으니
+    // cursor 를 0 으로 되돌려 한 번 전체를 다시 받는다 (LWW 라 결과는 같다, research G7)
+    db.createObjectStore('guideNotes', { keyPath: 'id' }).createIndex('byDirty', 'dirty');
+    if (oldVersion >= 1) tx.objectStore('meta').put(0, 'cursor');
   }
 }
 
@@ -98,6 +105,7 @@ export interface CommitOps {
   routines?: StoredRoutine[];
   sessions?: StoredSession[];
   settings?: StoredSettings[];
+  guideNotes?: StoredGuideNote[];
   meta?: Record<string, unknown>;
 }
 

@@ -12,7 +12,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:8081',
+    baseURL: 'http://localhost:8091',
     serviceWorkers: 'allow',
     trace: 'retain-on-failure',
   },
@@ -25,13 +25,13 @@ export default defineConfig({
   ],
   webServer: {
     command: 'node scripts/build.mjs && node server/src/main.ts',
-    url: 'http://localhost:8081/api/health',
+    url: 'http://localhost:8091/api/health',
     reuseExistingServer: false,
     timeout: 60_000,
     env: {
       FITNESS_DEV: '1',
       FITNESS_DB: db,
-      PORT: '8081',
+      PORT: '8091',
       HOST: '127.0.0.1',
     },
   },

@@ -3,7 +3,7 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import type { Exercise, Routine, Session, Settings } from '../../shared/model.ts';
+import type { Exercise, GuideNote, Routine, Session, Settings } from '../../shared/model.ts';
 import { buildExport } from '../../shared/export.ts';
 import { MAX_DEVICE_NAME, createPairingCode, revokeDevice, validDeviceName } from './auth.ts';
 import { openDb, type Db } from './db.ts';
@@ -78,6 +78,7 @@ function cmdExport(db: Db, args: string[]): number {
     routines: liveRecords<Routine>(db, 'routine'),
     sessions: liveRecords<Session>(db, 'session'),
     settings,
+    guideNotes: liveRecords<GuideNote>(db, 'guideNote'),
   });
   const json = JSON.stringify(data, null, 2);
   if (out) writeFileSync(out, json + '\n');
