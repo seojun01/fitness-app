@@ -18,6 +18,8 @@ export interface TimerView {
   totalMs: number;
   /** 다음 휴식에 쓸 기본 시간(초) */
   baseSeconds: number;
+  /** 진행 중일 때 끝나는 시각(ms). 아니면 null — 서버 휴식 알림 예약에 쓴다 (기능 006) */
+  endsAt: number | null;
 }
 
 export interface RestTimer {
@@ -60,6 +62,8 @@ export function createRestTimer(opts: {
   storage?: TimerStorage;
   onDone?: () => void;
   onBaseChange?: (seconds: number) => void;
+  /** 시작·일시정지·재개·정지·조절·완료로 상태나 끝나는 시각이 바뀔 때마다 (휴식 알림 예약용) */
+  onChange?: (view: TimerView) => void;
   baseSeconds?: number;
 } = {}): RestTimer {
   const now = opts.now ?? (() => Date.now());
@@ -78,6 +82,7 @@ export function createRestTimer(opts: {
     } catch {
       /* 저장 못 해도 화면은 동작한다 */
     }
+    opts.onChange?.(view());
   };
   const remaining = () => (s.state === 'running' ? Math.max(0, s.endsAt - now()) : s.state === 'paused' ? s.remainingMs : 0);
   const view = (): TimerView => ({
@@ -85,6 +90,7 @@ export function createRestTimer(opts: {
     remainingMs: s.state === 'idle' ? base * 1000 : remaining(),
     totalMs: s.state === 'idle' ? base * 1000 : s.totalMs,
     baseSeconds: base,
+    endsAt: s.state === 'running' ? s.endsAt : null,
   });
   const finish = () => {
     s = { state: 'done', totalMs: s.state === 'idle' ? 0 : s.totalMs };

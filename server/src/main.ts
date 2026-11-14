@@ -1,13 +1,17 @@
 // 홈서버 진입점: 정적 파일(PWA)과 /api/* 를 제공한다. TLS 는 앞단의 Caddy 가 처리한다.
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, resolve, sep } from 'node:path';
+import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApi } from './api.ts';
 import { FailureLimiter } from './auth.ts';
-import { openDb, type Db } from './db.ts';
+import { DEFAULT_DB, openDb, type Db } from './db.ts';
 import { createEvents, type EventsOptions } from './events.ts';
 import { HttpError, sendError, sendJson } from './http.ts';
+import { createPushRoutes, pushStatusOf } from './push-api.ts';
+import { createScheduler, type Scheduler } from './scheduler.ts';
+import { loadOrCreateVapid, type Vapid } from './vapid.ts';
+import { createPushSender } from './webpush.ts';
 
 const DEFAULT_STATIC = resolve(fileURLToPath(new URL('../../client/dist', import.meta.url)));
 
@@ -100,31 +104,61 @@ export interface ServerOptions {
   secureCookie?: boolean;
   now?: () => Date;
   events?: EventsOptions;
+  /** VAPID 키 파일 (기본: FITNESS_VAPID_FILE, 없으면 DB 옆 vapid.json) */
+  vapidFile?: string;
+  push?: {
+    /** 테스트용 추가 허용 호스트 (기본: FITNESS_PUSH_ALLOW_HOSTS, 쉼표 구분) */
+    allowHosts?: string[];
+    subject?: string;
+    fetch?: typeof fetch;
+  };
+  /** 휴식 알림 예약을 1초마다 자동으로 처리할지 (기본 true, 테스트는 false 로 두고 tick 을 직접 부른다) */
+  autoSchedule?: boolean;
 }
 
 export interface ServerHandle {
   server: http.Server;
   db: Db;
+  scheduler: Scheduler;
   close(): Promise<void>;
 }
 
 /** DB·SSE·API 를 모두 엮은 서버를 만든다 (listen 은 호출한 쪽이 한다). */
 export function createServer(options: ServerOptions = {}): ServerHandle {
-  const db = openDb(options.dbPath);
+  const dbPath = options.dbPath ?? process.env.FITNESS_DB ?? DEFAULT_DB;
+  const db = openDb(dbPath);
   const now = options.now ?? (() => new Date());
   const events = createEvents(db, options.events);
+
+  const vapidFile = options.vapidFile ?? process.env.FITNESS_VAPID_FILE ?? (dbPath === ':memory:' ? undefined : join(dirname(dbPath), 'vapid.json'));
+  let vapid: Vapid | undefined;
+  const getVapid = (): Vapid => {
+    if (vapid) return vapid;
+    if (!vapidFile) throw new Error('VAPID 키 파일 경로가 없어요 (FITNESS_VAPID_FILE)');
+    return (vapid = loadOrCreateVapid(vapidFile));
+  };
+  const allowHosts = options.push?.allowHosts ?? (process.env.FITNESS_PUSH_ALLOW_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+  const subject = options.push?.subject ?? process.env.FITNESS_VAPID_SUBJECT ?? 'https://fitness.home.arpa';
+  const getSender = () => createPushSender({ vapid: getVapid(), subject, fetch: options.push?.fetch, allowHosts, now });
+  const scheduler = createScheduler({ db, now, getSender });
+
   const api = createApi({
     db,
     now,
     events,
     limiter: new FailureLimiter(),
     secureCookie: options.secureCookie ?? process.env.FITNESS_DEV !== '1',
+    extra: createPushRoutes({ db, getVapid, getSender, allowHosts, now }),
+    pushStatus: (id) => pushStatusOf(db, id),
   });
   const server = createApp({ staticDir: options.staticDir }, [api]);
+  if (options.autoSchedule ?? true) scheduler.start();
   return {
     server,
     db,
+    scheduler,
     async close() {
+      scheduler.stop();
       events.close();
       server.closeAllConnections?.();
       await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -14,6 +14,8 @@ Environment=HOST=127.0.0.1
 # todo-app 이 8080 을 쓰므로 같은 호스트에서도 겹치지 않게 8081 을 쓴다
 Environment=PORT=8081
 Environment=FITNESS_DB=/var/lib/fitness/fitness.db
+# 휴식 알림(웹 푸시) 서명 키. 처음 실행할 때 만들어진다
+Environment=FITNESS_VAPID_FILE=/var/lib/fitness/vapid.json
 # node:sqlite 의 "experimental" 경고를 로그에서 줄인다
 Environment=NODE_NO_WARNINGS=1
 Restart=on-failure
@@ -29,9 +31,8 @@ NoNewPrivileges=true
 ProtectKernelTunables=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
-# 이 앱은 외부 서비스를 부르지 않는다(알림 푸시·캘린더 연동 없음). 서버 프로세스는 로컬 요청만 받으므로 아웃바운드를 막는다.
-IPAddressDeny=any
-IPAddressAllow=localhost
+# 휴식 알림을 보내려면 푸시 서비스(Apple·Google·Mozilla)로 나가는 HTTPS 가 필요하다.
+# 보내는 곳은 코드의 허용 목록(webpush.ts)으로 제한한다 (임의 주소로 요청하지 않는다).
 
 [Install]
 WantedBy=multi-user.target

@@ -117,6 +117,9 @@ export function revokeDevice(db: Db, id: string, now: Date = new Date()): boolea
     const dev = db.prepare('SELECT id FROM devices WHERE id = ?').get(id);
     if (!dev) return false;
     db.prepare('UPDATE devices SET revoked_at = COALESCE(revoked_at, ?) WHERE id = ?').run(now.toISOString(), id);
+    // 해제한 기기에는 더 이상 알림을 보내지 않는다
+    db.prepare('DELETE FROM push_subscriptions WHERE device_id = ?').run(id);
+    db.prepare('DELETE FROM rest_alarms WHERE device_id = ?').run(id);
     return true;
   });
 }

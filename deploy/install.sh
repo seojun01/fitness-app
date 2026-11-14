@@ -81,4 +81,6 @@ cat <<'DONE'
      (todo-app 과 같은 Caddy 이면 이미 설치돼 있어요)
   2) fitness-admin pair --name "iPhone"  으로 페어링 코드를 받아 앱의 설정 > 홈서버에 연결 에서 입력하세요.
   3) 매일 백업:  fitness-admin backup /var/lib/fitness/backup-$(date +%F).db
+  4) 휴식 알림: 홈 화면에 추가한 앱의 설정 > 휴식 알림 > 알림 켜기.
+     서버에서 직접 확인:  fitness-admin devices  →  fitness-admin push-test <deviceId>
 DONE

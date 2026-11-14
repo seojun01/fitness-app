@@ -1,6 +1,8 @@
 // 하단 고정 휴식 타이머 (기능 3, US2)
 import { vibrate } from '../feedback.ts';
+import { createRestAlarm } from '../rest-alarm.ts';
 import { createRestTimer, type RestTimer } from '../rest-timer.ts';
+import { services } from '../services.ts';
 import { h } from './dom.ts';
 
 export interface RestTimerBar {
@@ -11,11 +13,15 @@ export interface RestTimerBar {
 
 const fmt = (ms: number) => `${Math.ceil(ms / 1000)}`;
 
+/** 앱 전체에서 하나: 화면을 옮겨도 마지막으로 보낸 예약을 기억한다 (기능 006) */
+const restAlarm = createRestAlarm({ isPaired: async () => (await services.engine?.status())?.paired === true });
+
 export function createRestTimerBar(opts: { baseSeconds: number; onBaseChange(seconds: number): void }): RestTimerBar {
   const status = h('p', { class: 'timer-status', attrs: { role: 'status', 'aria-live': 'polite' } });
   const timer = createRestTimer({
     baseSeconds: opts.baseSeconds,
     onBaseChange: opts.onBaseChange,
+    onChange: (v) => void restAlarm.sync(v),
     onDone: () => {
       vibrate();
       status.textContent = '휴식 끝';

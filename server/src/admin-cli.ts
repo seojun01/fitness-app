@@ -2,17 +2,20 @@
 // fitness-admin: 홈서버 안에서만 실행하는 관리 CLI. HTTP 를 거치지 않고 DB 에 직접 접근한다.
 import { existsSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { Exercise, GuideNote, Routine, Session, Settings } from '../../shared/model.ts';
 import { buildExport } from '../../shared/export.ts';
 import { MAX_DEVICE_NAME, createPairingCode, revokeDevice, validDeviceName } from './auth.ts';
-import { openDb, type Db } from './db.ts';
+import { DEFAULT_DB, openDb, type Db } from './db.ts';
 import { liveRecords } from './sync.ts';
+import { loadOrCreateVapid } from './vapid.ts';
+import { createPushSender } from './webpush.ts';
 
 const USAGE = `사용법: fitness-admin <명령>
   pair --name <이름>      새 기기를 등록할 일회용 페어링 코드를 발급한다 (10분간 유효)
   devices                  등록된 기기 목록
   revoke <deviceId>        기기의 접근 권한을 해제한다
+  push-test <deviceId>     그 기기에 테스트 푸시를 보내고 푸시 서비스의 응답 코드를 출력한다
   export [--out <파일>]    모든 운동 데이터를 JSON 으로 내보낸다 (파일을 주지 않으면 stdout)
   backup <파일>            SQLite 온라인 백업을 만든다 (서비스를 멈추지 않아도 된다)`;
 
@@ -106,9 +109,51 @@ function cmdBackup(db: Db, args: string[]): number {
   return 0;
 }
 
-export function run(argv: string[]): number {
+const PUSH_HINT: Record<string, string> = {
+  ok: '전달됐어요. 기기에 테스트 알림이 보이는지 확인하세요.',
+  gone: '푸시 서비스가 이 구독을 모른다고 답했어요 (만료). 그 기기의 앱 설정에서 휴식 알림을 다시 켜세요.',
+  retry: '푸시 서비스가 일시적으로 받지 못했어요 (오류·제한). 잠시 뒤 다시 시도하세요.',
+  fail: '푸시 서비스가 요청을 거절했거나 닿지 못했어요 (키·형식 오류, 허용되지 않은 주소, 아웃바운드 차단 등). 서버 로그와 VAPID 설정을 확인하세요.',
+};
+
+async function cmdPushTest(db: Db, args: string[]): Promise<number> {
+  const id = args[0];
+  if (!id) {
+    console.error(USAGE);
+    return 2;
+  }
+  const dev = db.prepare('SELECT name, revoked_at FROM devices WHERE id = ?').get(id) as { name: string; revoked_at: string | null } | undefined;
+  if (!dev) {
+    console.error(`그런 기기가 없어요: ${id}`);
+    return 1;
+  }
+  const sub = db.prepare('SELECT endpoint, p256dh, auth, enabled FROM push_subscriptions WHERE device_id = ?').get(id) as
+    | { endpoint: string; p256dh: string; auth: string; enabled: number }
+    | undefined;
+  if (!sub) {
+    console.error(`${dev.name} 기기는 알림을 구독하지 않았어요. 그 기기의 앱 설정에서 "휴식 알림 > 알림 켜기"를 누르세요.`);
+    return 1;
+  }
+  const vapidFile = process.env.FITNESS_VAPID_FILE ?? join(dirname(process.env.FITNESS_DB ?? DEFAULT_DB), 'vapid.json');
+  const allowHosts = (process.env.FITNESS_PUSH_ALLOW_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+  let sender;
+  try {
+    sender = createPushSender({ vapid: loadOrCreateVapid(vapidFile), subject: process.env.FITNESS_VAPID_SUBJECT ?? 'https://fitness.home.arpa', allowHosts });
+  } catch (err) {
+    console.error(`VAPID 키를 준비하지 못했어요 (${vapidFile}): ${err instanceof Error ? err.message : String(err)}`);
+    return 1;
+  }
+  const out = await sender.sendDetailed({ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth }, { v: 1, test: true });
+  console.log(`푸시 서비스 응답: ${out.status ?? '응답 없음'} (${out.result})`);
+  console.log(PUSH_HINT[out.result]!);
+  if (sub.enabled !== 1) console.log('참고: 이 기기의 휴식 알림은 앱에서 꺼져 있어요.');
+  if (dev.revoked_at) console.log('참고: 이 기기는 해제된 기기예요.');
+  return out.result === 'ok' ? 0 : 1;
+}
+
+export async function run(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
-  if (cmd !== 'pair' && cmd !== 'devices' && cmd !== 'revoke' && cmd !== 'export' && cmd !== 'backup') {
+  if (cmd !== 'pair' && cmd !== 'devices' && cmd !== 'revoke' && cmd !== 'export' && cmd !== 'backup' && cmd !== 'push-test') {
     console.error(USAGE);
     return 2;
   }
@@ -118,6 +163,7 @@ export function run(argv: string[]): number {
     if (cmd === 'devices') return cmdDevices(db);
     if (cmd === 'export') return cmdExport(db, rest);
     if (cmd === 'backup') return cmdBackup(db, rest);
+    if (cmd === 'push-test') return await cmdPushTest(db, rest);
     return cmdRevoke(db, rest);
   } finally {
     db.close();
@@ -125,5 +171,5 @@ export function run(argv: string[]): number {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  process.exitCode = run(process.argv.slice(2));
+  process.exitCode = await run(process.argv.slice(2));
 }

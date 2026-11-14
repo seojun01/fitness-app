@@ -1,12 +1,13 @@
 // 서비스 워커: 앱 셸을 캐시해 오프라인에서도 앱이 열린다. /api/* 는 절대 캐시하지 않는다.
+import { handleNotificationClick, handlePush, type NotifySw } from './sw-notify.ts';
 declare const __BUILD_ID__: string;
 /** 빌드가 넣어 주는 사전 캐시 목록: 앱 셸, 지연 로딩 청크(가이드 데이터 등), 아이콘 (scripts/build.mjs) */
 declare const __PRECACHE__: string[];
 
-interface SwScope {
+interface SwScope extends NotifySw {
   addEventListener(type: string, listener: (event: any) => void): void;
   skipWaiting(): Promise<void>;
-  clients: { claim(): Promise<void> };
+  clients: NotifySw['clients'] & { claim(): Promise<void> };
 }
 const sw = self as unknown as SwScope;
 
@@ -52,4 +53,15 @@ sw.addEventListener('fetch', (event) => {
       return (await refresh) ?? new Response('오프라인이에요', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     })(),
   );
+});
+
+// ── 휴식 알림 ── (처리 내용은 sw-notify.ts 에 있다)
+
+sw.addEventListener('push', (event) => {
+  event.waitUntil(handlePush(sw, () => event.data?.json()));
+});
+
+sw.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(handleNotificationClick(sw));
 });

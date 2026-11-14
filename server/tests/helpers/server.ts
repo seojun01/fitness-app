@@ -15,7 +15,7 @@ export interface TestServer extends ServerHandle {
 
 export async function startTestServer(options: Partial<ServerOptions> = {}): Promise<TestServer> {
   const dir = mkdtempSync(join(tmpdir(), 'fitness-test-'));
-  const handle = createServer({ dbPath: ':memory:', staticDir: dir, secureCookie: false, ...options });
+  const handle = createServer({ dbPath: ':memory:', staticDir: dir, secureCookie: false, vapidFile: join(dir, 'vapid.json'), autoSchedule: false, ...options });
   await new Promise<void>((resolve) => handle.server.listen(0, '127.0.0.1', resolve));
   const addr = handle.server.address();
   if (!addr || typeof addr === 'string') throw new Error('서버 주소를 알 수 없어요');

@@ -13,9 +13,13 @@ export interface ApiDeps {
   now: () => Date;
   events: EventsHub;
   limiter: FailureLimiter;
+  /** 기기 인증이 필요한 추가 라우트 (푸시·휴식 알림) */
+  extra?: AuthedRoute[];
+  /** /api/devices/me 에 덧붙일 이 기기의 알림 상태 */
+  pushStatus?: (deviceId: string) => { subscribed: boolean; enabled: boolean };
 }
 
-interface AuthedRoute {
+export interface AuthedRoute {
   method: string;
   path: string;
   handle(req: IncomingMessage, res: ServerResponse, url: URL, device: Device): Promise<void> | void;
@@ -54,9 +58,15 @@ export function createApi(deps: ApiDeps): ApiHandler {
       method: 'GET',
       path: '/api/devices/me',
       handle(_req, res, _url, device) {
-        sendJson(res, 200, { deviceId: device.id, deviceName: device.name, createdAt: device.created_at });
+        sendJson(res, 200, {
+          deviceId: device.id,
+          deviceName: device.name,
+          createdAt: device.created_at,
+          push: deps.pushStatus?.(device.id) ?? { subscribed: false, enabled: false },
+        });
       },
     },
+    ...(deps.extra ?? []),
   ];
 
   return async (req, res, url) => {

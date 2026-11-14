@@ -40,6 +40,26 @@ const MIGRATIONS: Migration[] = [
       );
     `);
   },
+  // v2: 휴식 종료 알림 (specs/006-rest-end-notification/plan.md). 기기마다 구독 1개, 예약 1개
+  (db) => {
+    db.exec(`
+      CREATE TABLE push_subscriptions (
+        device_id  TEXT PRIMARY KEY,
+        endpoint   TEXT NOT NULL,
+        p256dh     TEXT NOT NULL,
+        auth       TEXT NOT NULL,
+        enabled    INTEGER NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE rest_alarms (
+        device_id  TEXT PRIMARY KEY,
+        ends_at    TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX rest_alarms_ends_idx ON rest_alarms(ends_at);
+    `);
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

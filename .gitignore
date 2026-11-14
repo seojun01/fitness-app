@@ -7,3 +7,4 @@ playwright-report/
 *.db-shm
 .DS_Store
 .env*
+vapid.json

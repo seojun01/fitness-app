@@ -7,6 +7,7 @@ import { downloadJson, eraseAllData, exportAllData } from '../export.ts';
 import { services } from '../services.ts';
 import { readTheme, saveTheme, type Theme } from '../theme.ts';
 import { describeStatus } from '../sync/status.ts';
+import { createNotify, describeNotify, type NotifyApi } from '../notify.ts';
 import { choose } from './dialog.ts';
 import { h } from './dom.ts';
 import { showToast } from './toast.ts';
@@ -52,6 +53,7 @@ export function settingsScreen(ctx: Ctx): Screen {
           st?.paired && st.state !== 'unauthorized' ? null : h('a', { class: 'btn', attrs: { href: '#/pair' }, text: st?.paired ? '다시 등록하기' : '홈서버에 연결' }),
         ),
       );
+      container.appendChild(restNotifyCard(createNotify(async () => (await services.engine?.status())?.paired === true)));
       container.append(
         h(
           'section',
@@ -102,4 +104,64 @@ export function settingsScreen(ctx: Ctx): Screen {
       );
     },
   };
+}
+
+/** 휴식 알림 (기능 006, FR-005): 상태와 이유를 글로 보여 주고, 켜기·끄기·테스트 알림을 제공한다 */
+function restNotifyCard(notify: NotifyApi): HTMLElement {
+  const hint = h('p', { class: 'hint', attrs: { role: 'status' }, text: '알림 상태를 확인하는 중이에요…' });
+  const actions = h('div', { class: 'btn-row' });
+  const card = h(
+    'section',
+    { class: 'card', attrs: { 'aria-label': '휴식 알림' } },
+    h('p', { class: 'field-label', text: '휴식 알림' }),
+    hint,
+    actions,
+  );
+  let busy = false;
+  const act = (text: string, run: () => Promise<void>, primary = false) =>
+    h('button', {
+      class: primary ? 'btn btn-primary' : 'btn',
+      type: 'button',
+      text,
+      onClick: async () => {
+        if (busy) return;
+        busy = true;
+        try {
+          await run();
+        } finally {
+          busy = false;
+        }
+      },
+    });
+
+  async function refresh(): Promise<void> {
+    const st = await notify.state();
+    if (!card.isConnected) return; // 확인하는 동안 다른 화면으로 갔다
+    hint.textContent = describeNotify(st);
+    actions.replaceChildren();
+    if (st.kind === 'off') {
+      actions.append(
+        act('알림 켜기', async () => {
+          const r = await notify.enable();
+          if (r.ok) showToast('휴식 알림을 켰어요');
+          else showToast(r.reason === 'denied' ? '알림 권한이 허용되지 않았어요' : r.reason === 'offline' ? '홈서버에 연결할 수 없어요' : '알림을 켜지 못했어요');
+          await refresh();
+        }, true),
+      );
+    } else if (st.kind === 'on') {
+      actions.append(
+        act('테스트 알림', async () => {
+          const r = await notify.sendTest();
+          showToast(r.ok ? '테스트 알림을 보냈어요' : r.reason === 'offline' ? '홈서버에 연결할 수 없어요' : '테스트 알림을 보내지 못했어요');
+          if (!r.ok && r.reason !== 'offline') await refresh();
+        }),
+        act('알림 끄기', async () => {
+          showToast((await notify.disable()) ? '휴식 알림을 껐어요' : '홈서버에 연결할 수 없어요');
+          await refresh();
+        }),
+      );
+    }
+  }
+  void refresh();
+  return card;
 }
