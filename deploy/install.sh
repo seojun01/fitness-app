@@ -62,7 +62,16 @@ chmod 0755 /usr/local/bin/fitness-admin
 
 echo "==> Caddy 설정"
 if [ "${FITNESS_SKIP_CADDYFILE:-0}" = "1" ]; then
-  echo "  건너뜀(FITNESS_SKIP_CADDYFILE=1): deploy/Caddyfile 의 사이트 블록을 기존 /etc/caddy/Caddyfile 에 직접 덧붙이세요."
+  # 공유 Caddyfile 은 덮어쓰지 않는다. 다만 다른 앱(todo-app)의 배포가 Caddyfile 을 통째로 바꾸면
+  # 이 앱의 사이트 블록이 사라지므로, 없으면 다시 덧붙인다 (있으면 그대로 둔다).
+  if grep -q '^fitness\.home\.arpa {' /etc/caddy/Caddyfile; then
+    echo "  공유 Caddyfile 에 fitness 사이트 블록이 있어요 (그대로 둠)"
+  else
+    cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak-$(date +%Y%m%d%H%M%S)"
+    { echo; sed -n '/^fitness\.home\.arpa {/,$p' "$SRC/deploy/Caddyfile"; } >> /etc/caddy/Caddyfile
+    echo "  공유 Caddyfile 에 fitness 사이트 블록을 덧붙였어요 (백업: /etc/caddy/Caddyfile.bak-*)"
+  fi
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 else
   install -m 0644 "$SRC/deploy/Caddyfile" /etc/caddy/Caddyfile
 fi
