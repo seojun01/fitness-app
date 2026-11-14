@@ -153,3 +153,46 @@ export async function deviceIdOf(page: Page): Promise<string> {
       }),
   );
 }
+
+export interface SeedSpec {
+  /** 오늘에서 며칠 전 (브라우저 현지 날짜) */
+  daysAgo: number;
+  hour?: number;
+  entries: { ex: string; name: string; sets: [number, number][] }[];
+}
+
+/** 완료 세션을 IndexedDB 에 바로 넣는다 (UI 로 기록하면 느리다). 시각은 브라우저 현지 시간으로 만든다 */
+export async function seedSessions(page: Page, specs: SeedSpec[]): Promise<string[]> {
+  return page.evaluate(
+    (specs) =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open('fitness');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const db = open.result;
+          const tx = db.transaction('sessions', 'readwrite');
+          const store = tx.objectStore('sessions');
+          const ids: string[] = [];
+          for (const s of specs) {
+            const start = new Date();
+            start.setHours(s.hour ?? 10, 0, 0, 0);
+            start.setDate(start.getDate() - s.daysAgo);
+            const id = crypto.randomUUID();
+            ids.push(id);
+            store.put({
+              id, status: 'completed', routineId: null, routineName: '테스트', startedAt: start.toISOString(), endedAt: new Date(start.getTime() + 45 * 60_000).toISOString(), startedBy: 'e2e',
+              entries: s.entries.map((e) => ({ entryId: crypto.randomUUID(), exerciseId: e.ex, exerciseName: e.name, sets: e.sets.map(([w, r]) => ({ setId: crypto.randomUUID(), weightKg: w, reps: r, done: true })) })),
+              deleted: false, version: '001700000000000-000000-e2e', updatedBy: 'e2e', dirty: 0,
+            });
+          }
+          tx.oncomplete = () => {
+            db.close();
+            resolve(ids);
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+    specs,
+  );
+}
+

@@ -13,6 +13,9 @@ import { sessionDetailScreen } from './ui/session-detail.ts';
 import { sessionScreen } from './ui/session-screen.ts';
 import { sessionSummaryScreen } from './ui/session-summary.ts';
 import { settingsScreen } from './ui/settings.ts';
+import { exerciseChartScreen } from './ui/exercise-chart.ts';
+import { statsDayScreen } from './ui/stats-day.ts';
+import { statsScreen } from './ui/stats-screen.ts';
 
 route('/routines', (ctx) => routineListScreen(ctx));
 route('/routines/new', (ctx) => routineEditorScreen(ctx, null));
@@ -26,6 +29,9 @@ const sessionRoute = (ctx: Parameters<Parameters<typeof route>[1]>[0], p: Record
 route('/session', sessionRoute);
 route('/session/:index', sessionRoute);
 route('/session/summary/:id', (ctx, p) => sessionSummaryScreen(ctx, p.id!));
+route('/stats', (ctx) => statsScreen(ctx));
+route('/stats/exercise/:id', (ctx, p) => exerciseChartScreen(ctx, p.id!));
+route('/stats/day/:day', (ctx, p) => statsDayScreen(ctx, p.day!));
 route('/guides', (ctx) => guideListScreen(ctx));
 route('/guides/:id', (ctx, p) => guideScreen(ctx, p.id!));
 route('/guides/:id/edit', (ctx, p) => guideNoteEditorScreen(ctx, p.id!));

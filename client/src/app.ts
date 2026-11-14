@@ -1,4 +1,4 @@
-// 해시 라우터와 앱 셸(상단 바, 본문, 하단 탭 3개)
+// 해시 라우터와 앱 셸(상단 바, 본문, 하단 탭 5개)
 import type { Ctx } from './context.ts';
 import { clear, h } from './ui/dom.ts';
 import { errorState, loadingState } from './ui/states.ts';
@@ -6,7 +6,7 @@ import { errorState, loadingState } from './ui/states.ts';
 export interface Screen {
   title: string;
   /** 어느 탭 아래에 속하는지 (강조 표시용) */
-  tab: 'routines' | 'history' | 'guides' | 'settings';
+  tab: 'routines' | 'history' | 'stats' | 'guides' | 'settings';
   /** 상단 왼쪽 "‹" 뒤로 링크 */
   back?: string;
   /** 운동에 집중하는 화면: 하단 탭을 숨긴다 */
@@ -49,6 +49,7 @@ function match(path: string): { handler: RouteHandler; params: Record<string, st
 const TABS: { key: Screen['tab']; label: string; href: string }[] = [
   { key: 'routines', label: '루틴', href: '#/routines' },
   { key: 'history', label: '기록', href: '#/history' },
+  { key: 'stats', label: '통계', href: '#/stats' },
   { key: 'guides', label: '가이드', href: '#/guides' },
   { key: 'settings', label: '설정', href: '#/settings' },
 ];

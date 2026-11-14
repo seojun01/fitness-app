@@ -52,7 +52,7 @@ export function sessionDetailScreen(ctx: Ctx, id: string): Screen {
       function renderEntries(): void {
         clear(entriesHost);
         for (const e of session!.entries) {
-          const card = h('section', { class: 'card entry' }, h('div', { class: 'entry-head' }, h('h2', { class: 'entry-title', text: e.exerciseName }), h('a', { class: 'btn btn-ghost', attrs: { href: `#/exercise/${e.exerciseId}`, 'aria-label': `${e.exerciseName} 이력` }, text: '이력' })));
+          const card = h('section', { class: 'card entry' }, h('div', { class: 'entry-head' }, h('h2', { class: 'entry-title', text: e.exerciseName }), h('div', { class: 'entry-links' }, h('a', { class: 'btn btn-ghost', attrs: { href: `#/exercise/${e.exerciseId}`, 'aria-label': `${e.exerciseName} 이력` }, text: '이력' }), h('a', { class: 'btn btn-ghost', attrs: { href: `#/stats/exercise/${e.exerciseId}`, 'aria-label': `${e.exerciseName} 차트` }, text: '차트' }))));
           card.appendChild(h('div', { class: 'set-head', attrs: { 'aria-hidden': 'true' } }, h('span', { text: '세트' }), h('span', { text: `무게(${unit})` }), h('span', { text: '횟수' }), h('span', { text: '' }), h('span', { text: '' })));
           e.sets.forEach((set, i) => {
             const base = `${e.exerciseName} ${i + 1}세트`;

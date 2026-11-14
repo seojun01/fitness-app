@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Page } from '@playwright/test';
-import { addExerciseByName, createCustomInPicker, createRoutineViaUi, navTo, openApp, row } from './helpers.ts';
+import { addExerciseByName, createCustomInPicker, createRoutineViaUi, navTo, openApp, row, seedSessions } from './helpers.ts';
 
 /** axe 위반 0, 가로 스크롤 없음, 터치 영역 44px 이상 (헌법 I·IV, quickstart V15) */
 async function audit(page: Page, label: string): Promise<void> {
@@ -150,6 +150,45 @@ test.describe('접근성: 기능 2 가이드 화면 (두 테마)', () => {
       await page.getByRole('dialog', { name: '접근성 종목' }).getByRole('button', { name: '가이드 작성' }).click();
       await expect(page.getByLabel('자세 요점 (한 줄에 하나)')).toBeVisible();
       await audit(page, `${mode} 노트 편집`);
+    });
+  }
+});
+
+test.describe('접근성: 기능 4 통계 화면 (두 테마)', () => {
+  const BENCH = '5eed0000-0000-4000-8000-000000000001';
+  for (const mode of ['dark', 'light'] as const) {
+    test(`${mode}: 통계 탭(빈·데이터), 종목 차트, 차트 대화상자, 그날 목록`, async ({ page }) => {
+      await page.addInitScript((m) => localStorage.setItem('fitness.theme', m), mode);
+      await openApp(page, '#/stats');
+      await expect(page.getByText('운동을 기록하면 여기에 통계가 쌓여요')).toBeVisible();
+      await audit(page, `${mode} 통계(빈 상태)`);
+      const bench = (w: number) => ({ ex: BENCH, name: '벤치 프레스', sets: [[w, 5], [w, 5]] as [number, number][] });
+      await seedSessions(page, [{ daysAgo: 0, hour: 7, entries: [bench(60)] }, { daysAgo: 0, hour: 19, entries: [bench(62)] }, { daysAgo: 9, entries: [bench(55)] }]);
+      await page.evaluate(() => (location.hash = '#/routines'));
+      await page.evaluate(() => (location.hash = '#/stats'));
+      await expect(page.getByRole('region', { name: '기간 요약' })).toBeVisible();
+      await page.getByRole('region', { name: '부위별 비중' }).getByRole('button', { name: /^가슴/ }).click();
+      await page.getByRole('region', { name: '주별 운동' }).getByText('표로 보기').click();
+      await page.getByRole('group', { name: '막대 고르기' }).first().focus();
+      await page.keyboard.press('End');
+      await audit(page, `${mode} 통계(데이터)`);
+      await page.getByRole('region', { name: '운동 달력' }).getByRole('button', { name: /운동 2회/ }).click();
+      await expect(page.getByRole('list', { name: '이날 운동 기록' })).toBeVisible();
+      await audit(page, `${mode} 그날 목록`);
+      await page.evaluate((id) => (location.hash = `#/stats/exercise/${id}`), BENCH);
+      await page.getByRole('group', { name: '점 고르기' }).focus();
+      await page.keyboard.press('End');
+      await page.getByText('표로 보기').click();
+      await audit(page, `${mode} 종목 차트`);
+      await page.getByRole('link', { name: '루틴' }).click();
+      await page.getByRole('button', { name: /자유운동/ }).click();
+      await page.getByRole('button', { name: '첫 종목 추가' }).click();
+      await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '벤치 프레스', exact: true }).click();
+      await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '+ 1 운동 추가' }).click();
+      await page.locator('summary', { hasText: /^기록$/ }).click();
+      await page.getByRole('button', { name: '벤치 프레스 차트 보기' }).click();
+      await expect(page.getByRole('dialog', { name: '벤치 프레스 차트' }).getByRole('region', { name: '개인 최고 기록' })).toBeVisible();
+      await audit(page, `${mode} 차트 대화상자`);
     });
   }
 });

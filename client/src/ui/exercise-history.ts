@@ -24,6 +24,7 @@ export async function exerciseHistoryScreen(ctx: Ctx, exerciseId: string): Promi
         container.appendChild(emptyState({ title: '이 종목의 기록이 아직 없어요' }));
         return;
       }
+      container.appendChild(h('a', { class: 'btn btn-block', attrs: { href: `#/stats/exercise/${exerciseId}` }, text: '차트 보기' }));
       container.appendChild(
         h(
           'ul',

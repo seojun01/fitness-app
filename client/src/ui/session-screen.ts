@@ -21,6 +21,7 @@ import { pickExercises } from './exercise-picker.ts';
 import { createRestTimerBar, type RestTimerBar } from './rest-timer-bar.ts';
 import { emptyState } from './states.ts';
 import { openGuideSheet } from './guide-sheet.ts';
+import { openExerciseChartDialog } from './exercise-chart.ts';
 
 const INDEX_KEY = 'fitness.sessionIndex';
 
@@ -402,7 +403,14 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
           ),
           compareLine,
           h('details', { class: 'fold' }, h('summary', { text: '메모' }), h('label', { class: 'visually-hidden', text: `${name} 메모`, attrs: { for: 'entry-memo' } }), memo, memoCount, memoErr),
-          h('details', { class: 'fold' }, h('summary', { text: '기록' }), recordsBody),
+          h(
+            'details',
+            { class: 'fold' },
+            h('summary', { text: '기록' }),
+            recordsBody,
+            // 그 종목 성장 차트: 대화상자라 진행 중 입력값·휴식 타이머가 그대로다 (기능 004 FR-011)
+            h('button', { class: 'btn btn-block chart-open', type: 'button', text: '차트 보기', attrs: { 'aria-label': `${name} 차트 보기` }, onClick: () => void openExerciseChartDialog(ctx, entry.exerciseId) }),
+          ),
           errorsHost,
           h('div', { class: 'set-head', attrs: { 'aria-hidden': 'true' } }, h('span', { text: '세트' }), h('span', { text: `무게(${unit})` }), h('span', { text: '회' }), h('span', { text: '완료' }), h('span', { text: '' })),
           rows,

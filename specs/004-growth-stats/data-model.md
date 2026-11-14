@@ -65,7 +65,7 @@ exerciseSeries(exerciseId, sessions, range, maxPoints = 60): { points: ExerciseP
 
 ### PersonalRecords (US1)
 ```ts
-interface PR { valueKg_or_reps: number; day: DayKey; sessionId: string }
+interface PR { value: number; day: DayKey; sessionId: string }   // value: 무게(kg) 또는 횟수
 personalRecords(exerciseId, sessions): { e1rm: PR|null; maxWeight: PR|null; sessionVolume: PR|null; maxReps: PR|null; sessionReps: PR|null }
 ```
 - 전체 기간이 대상이다. 값이 같으면 먼저 달성한 날을 남긴다. 기록이 없으면 모두 null이다.

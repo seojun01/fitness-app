@@ -2,7 +2,8 @@
 import type { BodyPart, RoutineItem, Session, SessionEntry } from './model.ts';
 
 const r4 = (x: number) => Math.round((x + Number.EPSILON) * 10_000) / 10_000;
-const completed = (sessions: Session[]) => sessions.filter((s) => s.status === 'completed' && !s.deleted && s.endedAt);
+/** 통계에 넣는 세션: 완료했고 삭제하지 않았으며 끝난 시각이 있는 세션 */
+export const completedSessions = (sessions: Session[]): Session[] => sessions.filter((s) => s.status === 'completed' && !s.deleted && s.endedAt);
 
 export interface Totals {
   volumeKg: number;
@@ -37,7 +38,7 @@ export interface PreviousTotals extends Totals {
 
 /** 이 세션(excludeSessionId)을 뺀, 그 종목을 완료한 가장 최근 세션의 합계 */
 export function previousTotals(exerciseId: string, sessions: Session[], excludeSessionId: string): PreviousTotals | null {
-  const list = completed(sessions)
+  const list = completedSessions(sessions)
     .filter((s) => s.id !== excludeSessionId)
     .sort((a, b) => b.endedAt!.localeCompare(a.endedAt!));
   for (const s of list) {
@@ -89,7 +90,7 @@ export interface ExerciseRecords {
 
 export function exerciseRecords(exerciseId: string, sessions: Session[]): ExerciseRecords {
   const out: ExerciseRecords = { best1rmKg: 0, maxWeightKg: 0, totalVolumeKg: 0, maxReps: 0, totalReps: 0, recent: [] };
-  const list = completed(sessions).sort((a, b) => b.endedAt!.localeCompare(a.endedAt!));
+  const list = completedSessions(sessions).sort((a, b) => b.endedAt!.localeCompare(a.endedAt!));
   let best = 0;
   let volume = 0;
   for (const s of list) {
@@ -115,7 +116,7 @@ export function exerciseRecords(exerciseId: string, sessions: Session[]): Exerci
 /** 그 루틴으로 완료한 세션의 최신 endedAt */
 export function lastPerformed(routineId: string, sessions: Session[]): string | null {
   let last: string | null = null;
-  for (const s of completed(sessions)) if (s.routineId === routineId && (!last || s.endedAt! > last)) last = s.endedAt!;
+  for (const s of completedSessions(sessions)) if (s.routineId === routineId && (!last || s.endedAt! > last)) last = s.endedAt!;
   return last;
 }
 
