@@ -1,6 +1,7 @@
 // 레코드 저장소의 공용 읽기·쓰기. 도메인 모듈(routines.ts, sessions.ts 등)이 쓴다.
 import type { Exercise, GuideNote, Routine, Session, Settings } from '../../../shared/model.ts';
-import { SEED_EXERCISES } from '../../../shared/seed-exercises.ts';
+import { SEED_EXERCISES, SEED_SET } from '../../../shared/seed-exercises.ts';
+import { SEED_VERSION } from '../../../shared/model.ts';
 import type { Ctx } from '../context.ts';
 import {
   commit, getRecord, listDirty, listRecords, req, runTx,
@@ -64,17 +65,22 @@ interface StoredAll {
 }
 
 /**
- * 첫 실행 때 기본 종목을 넣는다 (research R15). 시드는 항상 지는 버전이고 dirty 가 아니라 서버로 올라가지 않는다.
- * 이미 있는 레코드(예: 먼저 받은 삭제 표시)는 건드리지 않는다.
+ * 기본 종목을 넣거나 새 세트로 올린다 (기능 1 research R15, 기능 5 research P4).
+ * - 없는 기본 종목을 넣는다(시드 버전, dirty 아님 → 서버로 올리지 않는다).
+ * - 시드 버전 그대로인(사용자가 고치지 않은) 기본 종목은 새 정보(장비 등)로 바꾼다.
+ * - 사용자가 고치거나 지운 기본 종목은 건드리지 않는다.
  */
 export async function ensureSeed(db: IDBDatabase): Promise<void> {
-  if ((await getMeta<boolean>(db, 'seeded')) === true) return;
+  const set = (await getMeta<number>(db, 'seedSet')) ?? ((await getMeta<boolean>(db, 'seeded')) === true ? 1 : 0);
+  if (set >= SEED_SET) return;
   await runTx(db, ['exercises', 'meta'], 'readwrite', async (tx) => {
     const store = tx.objectStore('exercises');
     for (const e of SEED_EXERCISES) {
-      const existing = await req(store.get(e.id));
-      if (!existing) store.put({ ...e, dirty: 0 });
+      const existing = (await req(store.get(e.id))) as StoredExercise | undefined;
+      if (!existing || (existing.version === SEED_VERSION && !existing.deleted)) store.put({ ...e, dirty: 0 });
     }
-    tx.objectStore('meta').put(true, 'seeded');
+    const meta = tx.objectStore('meta');
+    meta.put(true, 'seeded');
+    meta.put(SEED_SET, 'seedSet');
   });
 }

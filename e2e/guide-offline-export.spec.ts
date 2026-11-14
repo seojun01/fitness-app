@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { navTo, openApp, startFreeWorkout } from './helpers.ts';
+import { createCustomInPicker, navTo, openApp, picker, startFreeWorkout } from './helpers.ts';
 
 async function ready(page: Page): Promise<void> {
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
@@ -24,10 +24,8 @@ test.describe('기능 2: 오프라인·내보내기·DB 업그레이드', () => 
     await openApp(page, '#/routines');
     await startFreeWorkout(page);
     await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-    const picker = page.getByRole('dialog', { name: '종목 선택' });
-    await picker.getByText('직접 종목 만들기').click();
-    await picker.getByLabel('종목 이름').fill('내보낼 운동');
-    await picker.getByRole('button', { name: '만들기' }).click();
+    await createCustomInPicker(page, '내보낼 운동');
+    await picker(page).getByRole('button', { name: '+ 1 운동 추가' }).click();
     await page.getByRole('button', { name: '내보낼 운동 가이드' }).click();
     await page.getByRole('dialog', { name: '내보낼 운동' }).getByRole('button', { name: '가이드 작성' }).click();
     await page.getByLabel('자세 요점 (한 줄에 하나)').fill('내보내기 요점');

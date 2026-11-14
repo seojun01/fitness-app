@@ -3,9 +3,9 @@ import type { Screen } from '../app.ts';
 import type { Ctx } from '../context.ts';
 import { ValidationError } from '../errors.ts';
 import { BODY_PART_LABEL } from '../labels.ts';
-import { appendExercise, getRoutineForEdit, resolveItems } from '../routines.ts';
+import { appendExercises, getRoutineForEdit, resolveItems } from '../routines.ts';
 import { clear, h } from './dom.ts';
-import { pickExercise } from './exercise-picker.ts';
+import { pickExercises } from './exercise-picker.ts';
 import { routineMenu, startRoutine } from './routine-list.ts';
 import { emptyState } from './states.ts';
 import { showToast } from './toast.ts';
@@ -67,11 +67,12 @@ export async function routineDetailScreen(ctx: Ctx, id: string): Promise<Screen>
               type: 'button',
               text: '+ 운동 추가',
               onClick: async () => {
-                const picked = await pickExercise(ctx);
-                if (!picked) return;
+                const picked = await pickExercises(ctx);
+                if (picked.length === 0) return;
                 try {
-                  await appendExercise(ctx, id, picked);
+                  const { skipped } = await appendExercises(ctx, id, picked);
                   await render();
+                  if (skipped > 0) showToast(`종목은 최대 50개까지라 ${skipped}개는 넣지 못했어요`);
                 } catch (e) {
                   showToast(e instanceof ValidationError ? e.message : '추가하지 못했어요');
                 }

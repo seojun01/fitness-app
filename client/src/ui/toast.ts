@@ -8,12 +8,15 @@ export interface ToastOptions {
   ms?: number;
 }
 
-let host: HTMLElement | null = null;
-
+/** 열린 모달 대화상자가 있으면 그 안에 띄운다 (모달 바깥은 누를 수 없으므로) */
 function getHost(): HTMLElement {
-  if (host && document.body.contains(host)) return host;
-  host = h('div', { class: 'toasts', attrs: { role: 'status', 'aria-live': 'polite' } });
-  document.body.appendChild(host);
+  const modals = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')];
+  const parent: HTMLElement = modals.at(-1) ?? document.body;
+  let host = [...parent.children].find((c) => c.classList.contains('toasts')) as HTMLElement | undefined;
+  if (!host) {
+    host = h('div', { class: 'toasts', attrs: { role: 'status', 'aria-live': 'polite' } });
+    parent.appendChild(host);
+  }
   return host;
 }
 

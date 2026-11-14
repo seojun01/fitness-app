@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Page } from '@playwright/test';
-import { addExerciseByName, createRoutineViaUi, navTo, openApp, row } from './helpers.ts';
+import { addExerciseByName, createCustomInPicker, createRoutineViaUi, navTo, openApp, row } from './helpers.ts';
 
 /** axe 위반 0, 가로 스크롤 없음, 터치 영역 44px 이상 (헌법 I·IV, quickstart V15) */
 async function audit(page: Page, label: string): Promise<void> {
@@ -51,8 +51,12 @@ test.describe('접근성·반응형 (WCAG 2.1 AA, 320px)', () => {
     await page.getByRole('button', { name: '종목 추가' }).click();
     await expect(page.getByRole('dialog', { name: '종목 선택' })).toBeVisible();
     await audit(page, '종목 선택');
-    await page.getByRole('dialog', { name: '종목 선택' }).getByText('직접 종목 만들기').click();
-    await audit(page, '종목 선택(직접 만들기 펼침)');
+    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '⊕ 커스텀 운동 추가' }).click();
+    await audit(page, '커스텀 운동 추가');
+    await page.getByRole('dialog', { name: '커스텀 운동 추가' }).getByRole('button', { name: '취소' }).click();
+    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '벤치 프레스', exact: true }).click();
+    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('group', { name: '장비' }).getByRole('button', { name: '케이블' }).click();
+    await audit(page, '종목 선택(필터·선택)');
     await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '닫기' }).click();
     await page.getByRole('button', { name: '저장', exact: true }).click();
 
@@ -140,10 +144,8 @@ test.describe('접근성: 기능 2 가이드 화면 (두 테마)', () => {
       await audit(page, `${mode} 가이드 시트`);
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-      const picker = page.getByRole('dialog', { name: '종목 선택' });
-      await picker.getByText('직접 종목 만들기').click();
-      await picker.getByLabel('종목 이름').fill('접근성 종목');
-      await picker.getByRole('button', { name: '만들기' }).click();
+      await createCustomInPicker(page, '접근성 종목');
+      await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '+ 1 운동 추가' }).click();
       await page.getByRole('button', { name: '접근성 종목 가이드' }).click();
       await page.getByRole('dialog', { name: '접근성 종목' }).getByRole('button', { name: '가이드 작성' }).click();
       await expect(page.getByLabel('자세 요점 (한 줄에 하나)')).toBeVisible();

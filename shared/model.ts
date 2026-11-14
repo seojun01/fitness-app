@@ -10,6 +10,10 @@ export const BODY_PARTS: readonly BodyPart[] = ['chest', 'back', 'shoulders', 'l
 
 export type WeightUnit = 'kg' | 'lb';
 
+/** 장비 (기능 5). 종목 선택의 장비 필터에 쓴다 */
+export type Equipment = 'bodyweight' | 'dumbbell' | 'barbell' | 'smith' | 'machine' | 'cable' | 'band' | 'kettlebell' | 'cardio' | 'other';
+export const EQUIPMENT: readonly Equipment[] = ['bodyweight', 'dumbbell', 'barbell', 'smith', 'machine', 'cable', 'band', 'kettlebell', 'cardio', 'other'];
+
 /** 모든 동기화 레코드의 공통 필드 */
 export interface SyncFields {
   id: string;
@@ -25,6 +29,10 @@ export interface Exercise extends SyncFields {
   bodyweight: boolean;
   /** 종목 메모(기구 설정 등). 없으면 빈 메모 (기능 3) */
   memo?: string;
+  /** 장비. 없으면 기본 종목 목록이나 bodyweight 로 정한다 (기능 5) */
+  equipment?: Equipment;
+  /** 좋아요. 없으면 false (기능 5) */
+  favorite?: boolean;
 }
 
 export interface RoutineItem {
@@ -137,7 +145,7 @@ export const validRestSeconds = (n: unknown): n is number =>
   typeof n === 'number' && Number.isInteger(n) && n >= REST_MIN && n <= REST_MAX && n % REST_STEP === 0;
 
 const KEYS: Record<RecordType, readonly string[]> = {
-  exercise: ['id', 'name', 'bodyPart', 'custom', 'bodyweight', 'memo', 'deleted', 'version', 'updatedBy'],
+  exercise: ['id', 'name', 'bodyPart', 'custom', 'bodyweight', 'memo', 'equipment', 'favorite', 'deleted', 'version', 'updatedBy'],
   routine: ['id', 'name', 'items', 'createdAt', 'deleted', 'version', 'updatedBy'],
   session: ['id', 'status', 'routineId', 'routineName', 'startedAt', 'endedAt', 'startedBy', 'entries', 'deleted', 'version', 'updatedBy'],
   settings: ['id', 'weightUnit', 'restSeconds', 'deleted', 'version', 'updatedBy'],
@@ -175,6 +183,8 @@ export function validateRecord(type: string, record: unknown): FieldError[] {
     if (typeof r.custom !== 'boolean') add('custom', 'type');
     if (typeof r.bodyweight !== 'boolean') add('bodyweight', 'type');
     if (r.memo !== undefined && (typeof r.memo !== 'string' || cpLength(r.memo) > MEMO_MAX)) add('memo', 'length');
+    if (r.equipment !== undefined && !(EQUIPMENT as readonly unknown[]).includes(r.equipment)) add('equipment', 'enum');
+    if (r.favorite !== undefined && typeof r.favorite !== 'boolean') add('favorite', 'type');
   } else if (t === 'routine') {
     if (!validName(r.name)) add('name', 'length');
     if (!isIso(r.createdAt)) add('createdAt', 'format');

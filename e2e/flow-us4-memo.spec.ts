@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { cliExport, createRoutineViaUi, navTo, newDevice, row } from './helpers.ts';
+import { cliExport, createRoutineViaUi, navTo, newDevice, pickInPicker, row } from './helpers.ts';
 
 test.describe('기능 3 US4: 종목 메모', () => {
   test('F12: 메모는 저장되어 다음 세션에도 보이고, 501자는 안내 후 저장되지 않는다', async ({ page }) => {
@@ -37,7 +37,7 @@ test.describe('기능 3 US4: 종목 메모', () => {
     const B = await newDevice(browser, 'memo-b');
     await B.page.getByRole('button', { name: /자유운동/ }).click();
     await B.page.getByRole('button', { name: '종목 추가', exact: true }).click();
-    await B.page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '레그 익스텐션', exact: true }).click();
+    await pickInPicker(B.page, ['레그 익스텐션']);
     await B.page.locator('summary', { hasText: '메모' }).click();
     await expect(B.page.getByLabel('레그 익스텐션 메모')).toHaveValue(memo);
     await A.context.close();

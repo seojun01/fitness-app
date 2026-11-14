@@ -18,13 +18,38 @@ export function row(page: Page, text: string): Locator {
   return page.getByRole('listitem').filter({ hasText: text });
 }
 
-/** 루틴 편집 화면에서 종목 선택창을 열어 이름으로 종목을 추가한다 */
+/** 종목 선택 화면 (기능 5: 전체 화면, 여러 개 선택 후 "+ N 운동 추가") */
+export const picker = (page: Page): Locator => page.getByRole('dialog', { name: '종목 선택' });
+
+/** 열려 있는 종목 선택에서 이름으로 종목들을 고르고 "+ N 운동 추가"를 누른다 */
+export async function pickInPicker(page: Page, names: string[]): Promise<void> {
+  const d = picker(page);
+  await expect(d).toBeVisible();
+  for (const name of names) await d.getByRole('button', { name, exact: true }).click();
+  await d.getByRole('button', { name: `+ ${names.length} 운동 추가` }).click();
+  await expect(d).toBeHidden();
+}
+
+/** 루틴 편집·진행 화면에서 종목 선택을 열어 이름으로 종목을 추가한다 */
 export async function addExerciseByName(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '종목 선택' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name, exact: true }).click();
-  await expect(dialog).toBeHidden();
+  await pickInPicker(page, [name]);
+}
+
+/** 열려 있는 종목 선택에서 커스텀 운동을 만든다 (만든 종목은 선택된 상태가 된다) */
+export async function createCustomInPicker(page: Page, name: string, bodyPart?: string): Promise<void> {
+  await picker(page).getByRole('button', { name: '⊕ 커스텀 운동 추가' }).click();
+  const form = page.getByRole('dialog', { name: '커스텀 운동 추가' });
+  await form.getByLabel('종목 이름').fill(name);
+  if (bodyPart) await form.getByLabel('부위').selectOption(bodyPart);
+  await form.getByRole('button', { name: '만들기' }).click();
+  await expect(form).toBeHidden();
+}
+
+/** 종목 선택의 종목 더보기(⋯) 메뉴에서 항목을 고른다 */
+export async function pickerMenu(page: Page, name: string, action: '가이드' | '이력' | '이름 수정' | '삭제'): Promise<void> {
+  await picker(page).getByRole('button', { name: `${name} 더보기`, exact: true }).click();
+  await page.getByRole('dialog', { name, exact: true }).getByRole('button', { name: action, exact: true }).click();
 }
 
 /** 새 루틴을 만들어 저장한다 */

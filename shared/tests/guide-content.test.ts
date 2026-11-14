@@ -4,7 +4,7 @@ import { SEED_EXERCISES } from '../seed-exercises.ts';
 import { getBuiltinGuide, listBuiltinGuides } from '../guides.ts';
 import { isMuscleId } from '../muscles.ts';
 
-test('기본 종목 35개 전부에 가이드가 정확히 하나씩 있다', () => {
+test('기본 종목 전부(91개)에 가이드가 정확히 하나씩 있다', () => {
   const guides = listBuiltinGuides();
   assert.equal(guides.length, SEED_EXERCISES.length);
   assert.equal(new Set(guides.map((g) => g.exerciseId)).size, guides.length);

@@ -1,5 +1,5 @@
 // 운동 종목: 직접 만들기, 이름 수정, 삭제·복구 (FR-003)
-import { BODY_PARTS, validateRecord, type BodyPart } from '../../shared/model.ts';
+import { BODY_PARTS, validateRecord, type BodyPart, type Equipment } from '../../shared/model.ts';
 import type { Ctx } from './context.ts';
 import { toValidationError } from './errors.ts';
 import type { StoredExercise } from './store/db.ts';
@@ -20,8 +20,9 @@ export async function listExercises(db: IDBDatabase): Promise<StoredExercise[]> 
     .sort((a, b) => (ORDER.get(a.bodyPart) ?? 99) - (ORDER.get(b.bodyPart) ?? 99) || a.name.localeCompare(b.name, 'ko'));
 }
 
-export async function createExercise(ctx: Ctx, input: { name: string; bodyPart: BodyPart; bodyweight?: boolean }): Promise<StoredExercise> {
-  const rec = { id: crypto.randomUUID(), name: input.name.trim(), bodyPart: input.bodyPart, custom: true, bodyweight: input.bodyweight ?? false, deleted: false };
+export async function createExercise(ctx: Ctx, input: { name: string; bodyPart: BodyPart; bodyweight?: boolean; equipment?: Equipment }): Promise<StoredExercise> {
+  const equipment = input.equipment ?? (input.bodyweight ? 'bodyweight' : 'other');
+  const rec = { id: crypto.randomUUID(), name: input.name.trim(), bodyPart: input.bodyPart, custom: true, bodyweight: input.bodyweight ?? equipment === 'bodyweight', equipment, deleted: false };
   check(rec);
   return (await saveRecords(ctx, { exercises: [rec as never] })).exercises[0]!;
 }
@@ -53,4 +54,11 @@ export async function setExerciseMemo(ctx: Ctx, id: string, memo: string): Promi
   const next = { ...cur, memo };
   check(next);
   return (await saveRecords(ctx, { exercises: [next] })).exercises[0]!;
+}
+
+/** 좋아요 켜기·끄기 (동기화된다, 기능 5) */
+export async function toggleFavorite(ctx: Ctx, id: string): Promise<StoredExercise> {
+  const cur = await getExercise(ctx.db, id);
+  if (!cur) throw new Error('종목을 찾을 수 없어요');
+  return (await saveRecords(ctx, { exercises: [{ ...cur, favorite: !cur.favorite }] })).exercises[0]!;
 }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { addExerciseByName, createRoutineViaUi, navTo, openApp, openRoutine, openRoutineEditor, routineAction, row } from './helpers.ts';
+import { addExerciseByName, createCustomInPicker, createRoutineViaUi, navTo, openApp, openRoutine, openRoutineEditor, picker, pickerMenu, routineAction, row } from './helpers.ts';
 
 test.describe('US1: 루틴 만들기 및 관리', () => {
   test('시나리오 1: 빈 상태에서 이름과 종목 3개로 루틴을 저장하면 새로고침해도 남아 있다', async ({ page }) => {
@@ -71,22 +71,19 @@ test.describe('US1: 루틴 만들기 및 관리', () => {
   test('종목을 직접 만들고 이름을 수정·삭제할 수 있다', async ({ page }) => {
     await openApp(page, '#/routines/new');
     await page.getByLabel('루틴 이름').fill('내 루틴');
-    await page.getByRole('button', { name: '종목 추가' }).click();
-    const dialog = page.getByRole('dialog', { name: '종목 선택' });
-    await dialog.getByText('직접 종목 만들기').click();
-    await dialog.getByLabel('종목 이름').fill('내 전용 컬');
-    await dialog.getByLabel('부위').selectOption('arms');
-    await dialog.getByRole('button', { name: '만들기' }).click();
-    await expect(dialog).toBeHidden();
+    await page.getByRole('button', { name: '종목 추가', exact: true }).click();
+    await createCustomInPicker(page, '내 전용 컬', 'arms');
+    await picker(page).getByRole('button', { name: '+ 1 운동 추가' }).click();
     await expect(page.getByRole('list', { name: '루틴 종목' })).toContainText('내 전용 컬');
-    await page.getByRole('button', { name: '종목 추가' }).click();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '내 전용 컬 이름 수정' }).click();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByLabel('새 이름').fill('내 전용 해머컬');
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '이름 저장' }).click();
-    await expect(page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '내 전용 해머컬', exact: true })).toBeVisible();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '내 전용 해머컬 삭제' }).click();
-    await expect(page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '내 전용 해머컬', exact: true })).toHaveCount(0);
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '닫기' }).click();
+    await page.getByRole('button', { name: '종목 추가', exact: true }).click();
+    await picker(page).getByRole('group', { name: '분류' }).getByRole('button', { name: '커스텀' }).click();
+    await pickerMenu(page, '내 전용 컬', '이름 수정');
+    await page.getByRole('dialog', { name: '이름 수정' }).getByLabel('새 이름').fill('내 전용 해머컬');
+    await page.getByRole('dialog', { name: '이름 수정' }).getByRole('button', { name: '이름 저장' }).click();
+    await expect(picker(page).getByRole('button', { name: '내 전용 해머컬', exact: true })).toBeVisible();
+    await pickerMenu(page, '내 전용 해머컬', '삭제');
+    await expect(picker(page).getByRole('button', { name: '내 전용 해머컬', exact: true })).toHaveCount(0);
+    await picker(page).getByRole('button', { name: '닫기' }).click();
     await addExerciseByName(page, '벤치 프레스');
   });
 });

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { cliExport, cliRevoke, createRoutineViaUi, deviceIdOf, newDevice, openApp, pairThisDevice, row, syncStatus } from './helpers.ts';
+import { cliExport, cliRevoke, createRoutineViaUi, deviceIdOf, newDevice, openApp, pairThisDevice, pickInPicker, row, syncStatus } from './helpers.ts';
 
 const weight = (page: Page, ex: string, n: number) => page.getByLabel(`${ex} ${n}세트 무게`);
 const reps = (page: Page, ex: string, n: number) => page.getByLabel(`${ex} ${n}세트 횟수`);
@@ -26,7 +26,7 @@ test.describe('US3: 오프라인 보존과 홈서버 동기화', () => {
     await expect(page.getByRole('navigation', { name: '주 메뉴' })).toBeVisible();
     await page.getByRole('button', { name: /자유운동/ }).click();
     await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '스쿼트', exact: true }).click();
+    await pickInPicker(page, ['스쿼트']);
     await weight(page, '스쿼트', 1).fill('100');
     await reps(page, '스쿼트', 1).fill('5');
     await check(page, '스쿼트', 1).click();

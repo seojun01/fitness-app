@@ -7,7 +7,7 @@ import { BODY_PART_LABEL } from '../labels.ts';
 import { addItem, createRoutine, getRoutineForEdit, moveItem, removeItemAt, setTargetSets, updateRoutine } from '../routines.ts';
 import { listAllExercises } from '../store/records.ts';
 import { clear, h } from './dom.ts';
-import { pickExercise } from './exercise-picker.ts';
+import { pickExercises } from './exercise-picker.ts';
 
 export function routineEditorScreen(ctx: Ctx, id: string | null): Screen {
   let items: RoutineItem[] = [];
@@ -69,17 +69,21 @@ export function routineEditorScreen(ctx: Ctx, id: string | null): Screen {
         type: 'button',
         text: '종목 추가',
         onClick: async () => {
-          const picked = await pickExercise(ctx);
-          if (!picked) return;
-          try {
-            items = addItem(items, picked);
-            // 방금 만든 종목도 이름을 알 수 있게 다시 읽는다
-            for (const e of await listAllExercises(ctx.db)) exercises.set(e.id, e);
-            renderItems();
-            status.textContent = '';
-          } catch (e) {
-            status.textContent = e instanceof ValidationError ? e.message : '추가하지 못했어요';
+          const picked = await pickExercises(ctx);
+          if (picked.length === 0) return;
+          let skipped = 0;
+          for (const id of picked) {
+            try {
+              items = addItem(items, id);
+            } catch (e) {
+              if (e instanceof ValidationError) skipped++;
+              else throw e;
+            }
           }
+          // 방금 만든 종목도 이름을 알 수 있게 다시 읽는다
+          for (const e of await listAllExercises(ctx.db)) exercises.set(e.id, e);
+          renderItems();
+          status.textContent = skipped > 0 ? `종목은 최대 50개까지라 ${skipped}개는 넣지 못했어요` : '';
         },
       });
 

@@ -168,3 +168,12 @@ test('guideNote: 툼스톤은 공통 필드만으로 통과 (기본 종목 id �
   ok('guideNote', { id: CUSTOM, deleted: true, version: 'v2', updatedBy: 'dev' });
   bad('guideNote', { id: '5eed0000-0000-4000-8000-000000000001', deleted: true, version: 'v2', updatedBy: 'dev' }, 'id');
 });
+
+test('exercise.equipment 는 10개 값 중 하나, favorite 는 불리언 (둘 다 선택)', () => {
+  for (const eq of ['bodyweight', 'dumbbell', 'barbell', 'smith', 'machine', 'cable', 'band', 'kettlebell', 'cardio', 'other']) ok('exercise', exercise({ equipment: eq }));
+  bad('exercise', exercise({ equipment: 'trx' }), 'equipment');
+  ok('exercise', exercise({ favorite: true }));
+  ok('exercise', exercise({ favorite: false }));
+  bad('exercise', exercise({ favorite: 'yes' }), 'favorite');
+  ok('exercise', exercise()); // 이전 레코드(필드 없음)
+});

@@ -4,9 +4,20 @@ import { SEED_EXERCISES } from '../seed-exercises.ts';
 import { SEED_VERSION, validateRecord } from '../model.ts';
 import { merge } from '../merge.ts';
 
-test('기본 종목은 약 40개이고 id 가 중복되지 않는다', () => {
-  assert.ok(SEED_EXERCISES.length >= 35 && SEED_EXERCISES.length <= 45);
+test('기본 종목은 91개이고 id·이름이 중복되지 않는다 (기능 5)', () => {
+  assert.equal(SEED_EXERCISES.length, 91);
   assert.equal(new Set(SEED_EXERCISES.map((e) => e.id)).size, SEED_EXERCISES.length);
+  assert.equal(new Set(SEED_EXERCISES.map((e) => e.name)).size, SEED_EXERCISES.length);
+});
+
+test('모든 기본 종목에 장비가 있고, 맨몸 장비면 bodyweight 표시가 켜져 있다', async () => {
+  const { EQUIPMENT } = await import('../model.ts');
+  for (const e of SEED_EXERCISES) {
+    assert.ok(e.equipment && EQUIPMENT.includes(e.equipment), e.name);
+    if (e.equipment === 'bodyweight') assert.equal(e.bodyweight, true, e.name);
+  }
+  const { SEED_SET } = await import('../seed-exercises.ts');
+  assert.equal(SEED_SET, 2);
 });
 
 test('모든 기본 종목이 검증을 통과하고 시드 버전을 가진다', () => {

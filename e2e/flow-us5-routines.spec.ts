@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createRoutineViaUi, navTo, openApp, openRoutine, routineAction, row } from './helpers.ts';
+import { createRoutineViaUi, navTo, openApp, openRoutine, pickInPicker, routineAction, row } from './helpers.ts';
 
 test.describe('기능 3 US5: 루틴 화면 개편', () => {
   test('F13: 카드에 부위와 마지막 수행일, 운동 후 "오늘"', async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe('기능 3 US5: 루틴 화면 개편', () => {
     await expect(items).toHaveCount(1);
     await expect(items.nth(0)).toContainText('하체 · 3세트');
     await page.getByRole('button', { name: '+ 운동 추가' }).click();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '레그 컬', exact: true }).click();
+    await pickInPicker(page, ['레그 컬']);
     await expect(items).toHaveCount(2);
     await expect(items.nth(1)).toContainText('레그 컬');
     await page.getByRole('button', { name: '▶ 시작' }).click();

@@ -85,5 +85,39 @@ test('시드는 이미 있는 레코드(삭제 표시)를 덮어쓰지 않고, m
   await ensureSeed(db);
   assert.equal((await getExercise(db, seed.id))!.deleted, true);
   // 다른 기기의 시드가 pull 로 들어와도 삭제를 되살리지 못한다
-  assert.equal(merge(tomb, seed), tomb);
+  assert.equal(merge<{ version: string }>(tomb, seed), tomb);
+});
+
+test('기본 종목 세트 업그레이드: 새 종목 추가, 고치지 않은 기본 종목은 새 정보 반영, 고치거나 지운 종목은 그대로 (기능 5)', async () => {
+  const db = await fresh();
+  // 예전 기기: 세트 1 (기본 종목 35개, 장비 정보 없음)
+  const old = SEED_EXERCISES.slice(0, 35).map(({ equipment: _e, ...rest }) => ({ ...rest, dirty: 0 as const }));
+  const renamed = { ...old[0]!, name: '내 벤치', version: '001762950896789-000000-dev', dirty: 0 as const };
+  const removed = { ...old[1]!, deleted: true, version: '001762950896789-000001-dev', dirty: 0 as const };
+  await commit(db, { exercises: [renamed, removed, ...old.slice(2)], meta: { seeded: true } }, { silent: true });
+
+  await ensureSeed(db);
+  const all = await listAllExercises(db);
+  assert.equal(all.length, SEED_EXERCISES.length, '새 기본 종목이 추가된다');
+  const byId = new Map(all.map((e) => [e.id, e]));
+  assert.equal(byId.get(renamed.id)!.name, '내 벤치', '사용자가 고친 종목은 그대로');
+  assert.equal(byId.get(renamed.id)!.equipment, undefined);
+  assert.equal(byId.get(removed.id)!.deleted, true, '지운 종목은 되살리지 않는다');
+  assert.equal(byId.get(old[2]!.id)!.equipment, SEED_EXERCISES[2]!.equipment, '고치지 않은 기본 종목에 장비가 반영된다');
+  assert.equal(byId.get(SEED_EXERCISES[40]!.id)!.version, SEED_VERSION);
+  assert.equal((await listDirty(db, 'exercises')).length, 0, '업그레이드는 서버로 올리지 않는다');
+  assert.equal(await getMeta(db, 'seedSet'), 2);
+
+  // 두 번 실행해도 같다
+  await ensureSeed(db);
+  assert.equal((await listAllExercises(db)).length, SEED_EXERCISES.length);
+});
+
+test('새 기기는 처음부터 세트 2 (91개, 장비 포함)', async () => {
+  const db = await fresh();
+  await ensureSeed(db);
+  const all = await listAllExercises(db);
+  assert.equal(all.length, 91);
+  assert.ok(all.every((e) => e.equipment));
+  assert.equal(await getMeta(db, 'seedSet'), 2);
 });

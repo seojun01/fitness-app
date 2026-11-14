@@ -106,7 +106,11 @@ export function startApp(ctx: Ctx, mountPoint: HTMLElement): Shell {
       if (screen.back) backLink.setAttribute('href', screen.back);
       if (screen.focus) root.setAttribute('data-focus', 'true');
       else root.removeAttribute('data-focus');
-      await screen.mount(main);
+      // 화면마다 전용 컨테이너에 그린다. 이동이 겹쳐 이 화면이 밀려나면 컨테이너가 떨어져 나가므로,
+      // 늦게 끝난 비동기 렌더링이 새 화면 위에 덧그려지지 않는다.
+      const view = h('div', { class: 'view' });
+      main.appendChild(view);
+      await screen.mount(view);
       main.focus({ preventScroll: true });
       window.scrollTo(0, 0);
     } catch (err) {

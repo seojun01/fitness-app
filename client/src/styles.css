@@ -296,3 +296,33 @@ select.input { height: var(--tap); }
 .chip input { width: 18px; height: 18px; accent-color: var(--accent); }
 .chip:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 360px) { .filter-row { grid-template-columns: 1fr; } }
+
+/* ── 종목 선택 (기능 5) ── */
+dialog.picker-full { margin: 0; padding: 0; border: none; width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+dialog.picker-full:not([open]) { display: none; }
+.picker-head { display: flex; align-items: center; gap: var(--space-2); padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-3) var(--space-2); }
+.picker-search { flex: 1; min-width: 0; border-radius: 12px; background: var(--surface-2); border-color: transparent; }
+.picker-body { flex: 1; overflow-y: auto; padding: 0 var(--space-3) 120px; }
+.picker-filters { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-2); }
+.chip-row { display: flex; gap: var(--space-1); overflow-x: auto; scrollbar-width: none; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip-tab { flex: none; min-height: var(--tap); min-width: var(--tap); padding: 0 var(--space-3); border: none; background: none; color: var(--text-muted); font-size: 1.0625rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.row-category .chip-tab[aria-pressed='true'] { color: var(--accent); }
+.row-group .chip-tab[aria-pressed='true'] { color: var(--warn); }
+.row-equipment .chip-tab[aria-pressed='true'] { color: var(--ok); }
+.chip-tab[aria-pressed='true'] { text-decoration: underline; text-underline-offset: 6px; }
+.picker-custom { display: block; margin: var(--space-2) auto var(--space-3); color: var(--accent); font-size: 1.0625rem; }
+.picker-row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.picker-row[data-selected='true'] { background: var(--accent-soft); border-radius: var(--radius); }
+.heart { flex: none; width: var(--tap); height: var(--tap); border: none; background: none; color: #4a9eff; font-size: 1.5rem; cursor: pointer; }
+.picked { color: var(--ok); font-weight: 800; }
+.picker-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom)); pointer-events: none; }
+.picker-bar > * { pointer-events: auto; }
+.picker-add { flex: 1; }
+.picker-add[hidden], .fab[hidden] { display: none; }
+.fab { flex: none; width: 56px; height: 56px; border: none; border-radius: 16px; font-size: 1.5rem; font-weight: 800; cursor: pointer; }
+.fab-top { background: var(--accent-bg); color: var(--accent-contrast); }
+.fab-reset { background: #7a5a00; color: #ffffff; margin-left: auto; }
+.picker-bar .fab-top:only-child { margin-right: auto; }
+.picker-row .list-item-main { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.picker-row .list-item-main .list-item-title { display: inline; }

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { addExerciseByName, createRoutineViaUi, deleteSetViaMenu, openApp, row, startFreeWorkout } from './helpers.ts';
+import { addExerciseByName, createRoutineViaUi, deleteSetViaMenu, openApp, pickInPicker, row, startFreeWorkout } from './helpers.ts';
 
 const weight = (page: Page, ex: string, n: number) => page.getByLabel(`${ex} ${n}세트 무게`);
 const reps = (page: Page, ex: string, n: number) => page.getByLabel(`${ex} ${n}세트 횟수`);
@@ -80,7 +80,7 @@ test.describe('기능 3 US1: 한 종목씩 넘기며 운동하기', () => {
     await startFreeWorkout(page);
     await expect(page.getByText('종목을 추가해 시작하세요')).toBeVisible();
     await page.getByRole('button', { name: '첫 종목 추가' }).click();
-    await page.getByRole('dialog', { name: '종목 선택' }).getByRole('button', { name: '플랭크', exact: true }).click();
+    await pickInPicker(page, ['플랭크']);
     await expect(title(page)).toHaveText('플랭크');
   });
 

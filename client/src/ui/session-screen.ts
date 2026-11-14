@@ -17,7 +17,7 @@ import type { StoredExercise, StoredSession } from '../store/db.ts';
 import { listAllExercises, listAllSessions } from '../store/records.ts';
 import { choose } from './dialog.ts';
 import { clear, h } from './dom.ts';
-import { pickExercise } from './exercise-picker.ts';
+import { pickExercises } from './exercise-picker.ts';
 import { createRestTimerBar, type RestTimerBar } from './rest-timer-bar.ts';
 import { emptyState } from './states.ts';
 import { openGuideSheet } from './guide-sheet.ts';
@@ -461,16 +461,24 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
       };
 
       async function addExercise(): Promise<void> {
-        const picked = await pickExercise(ctx);
-        if (!picked) return;
+        const picked = await pickExercises(ctx);
+        if (picked.length === 0) return;
         await enqueue(async () => {
-          try {
-            session = await addEntry(ctx, sessionId, picked);
-            for (const e of await listAllExercises(ctx.db)) exercises.set(e.id, e);
-            location.hash = `#/session/${session.entries.length - 1}`;
-            if (index === session.entries.length - 1) renderEntry();
-          } catch (e) {
-            reportFailure('add-entry', e);
+          const first = session!.entries.length; // 추가된 첫 종목의 번호
+          let skipped = 0;
+          for (const id of picked) {
+            try {
+              session = await addEntry(ctx, sessionId, id);
+            } catch (e) {
+              if (e instanceof ValidationError) skipped++;
+              else reportFailure('add-entry', e);
+            }
+          }
+          for (const e of await listAllExercises(ctx.db)) exercises.set(e.id, e);
+          setError('add-entry', skipped > 0 ? `종목은 최대 50개까지라 ${skipped}개는 넣지 못했어요` : null);
+          if (session!.entries.length > first) {
+            location.hash = `#/session/${first}`;
+            if (index === first) renderEntry();
           }
         });
       }

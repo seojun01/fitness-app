@@ -1,15 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
-import { cliExport, createRoutineViaUi, navTo, newDevice, openApp, row, startFreeWorkout } from './helpers.ts';
+import { cliExport, createCustomInPicker, createRoutineViaUi, navTo, newDevice, openApp, picker, pickerMenu, pickInPicker, row, startFreeWorkout } from './helpers.ts';
 
 const sheet = (page: Page, name: string) => page.getByRole('dialog', { name });
 
 /** 종목 선택에서 직접 종목을 만든다 (자유운동 진행 화면에서) */
 async function createCustomInSession(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '종목 선택' });
-  await dialog.getByText('직접 종목 만들기').click();
-  await dialog.getByLabel('종목 이름').fill(name);
-  await dialog.getByRole('button', { name: '만들기' }).click();
+  await createCustomInPicker(page, name);
+  await picker(page).getByRole('button', { name: '+ 1 운동 추가' }).click();
   await expect(page.locator('.entry-title-lg')).toHaveText(name);
 }
 
@@ -61,13 +59,12 @@ test.describe('기능 2 US2: 종목 선택에서 가이드', () => {
     await openApp(page, '#/routines/new');
     await page.getByLabel('루틴 이름').fill('선택 테스트');
     await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-    const picker = page.getByRole('dialog', { name: '종목 선택' });
-    await picker.getByRole('button', { name: '스쿼트 가이드' }).click();
+    await pickerMenu(page, '스쿼트', '가이드');
     const d = sheet(page, '스쿼트');
     await expect(d).toContainText('주동근: 대퇴사두근, 둔근');
     await d.getByRole('button', { name: '닫기' }).click();
-    await expect(picker).toBeVisible();
-    await picker.getByRole('button', { name: '스쿼트', exact: true }).click();
+    await expect(picker(page)).toBeVisible();
+    await pickInPicker(page, ['스쿼트']);
     await expect(page.getByRole('list', { name: '루틴 종목' })).toContainText('스쿼트');
   });
 });
@@ -78,7 +75,7 @@ test.describe('기능 2 US3: 가이드 탭', () => {
     await navTo(page, '가이드');
     const items = page.getByRole('list', { name: '가이드 목록' }).getByRole('listitem');
     await page.getByLabel('부위').selectOption('legs');
-    await expect(items).toHaveCount(7);
+    await expect(items).toHaveCount(18); // 하체 기본 종목 (기능 5에서 7 → 18)
     for (const t of await items.allInnerTexts()) expect(t).toContain('하체');
     await page.getByLabel('가이드 검색').fill('레그');
     await expect(items).toHaveCount(3); // 하체 중 레그 프레스·레그 컬·레그 익스텐션 (레그 레이즈는 코어라 빠진다)
@@ -97,11 +94,10 @@ test.describe('기능 2 US3: 가이드 탭', () => {
   test('기본 종목 이름을 바꿔도 가이드가 남는다', async ({ page }) => {
     await openApp(page, '#/routines/new');
     await page.getByRole('button', { name: '종목 추가', exact: true }).click();
-    const picker = page.getByRole('dialog', { name: '종목 선택' });
-    await picker.getByRole('button', { name: '해머 컬 이름 수정' }).click();
-    await picker.getByLabel('새 이름').fill('뉴트럴 그립 컬');
-    await picker.getByRole('button', { name: '이름 저장' }).click();
-    await picker.getByRole('button', { name: '뉴트럴 그립 컬 가이드' }).click();
+    await pickerMenu(page, '해머 컬', '이름 수정');
+    await page.getByRole('dialog', { name: '이름 수정' }).getByLabel('새 이름').fill('뉴트럴 그립 컬');
+    await page.getByRole('dialog', { name: '이름 수정' }).getByRole('button', { name: '이름 저장' }).click();
+    await pickerMenu(page, '뉴트럴 그립 컬', '가이드');
     await expect(sheet(page, '뉴트럴 그립 컬')).toContainText('주동근: 이두근, 전완근');
   });
 });
@@ -110,9 +106,9 @@ test.describe('기능 2 US4: 직접 만든 종목의 가이드 노트', () => {
   test('G6: 작성·표시·모두 비우기·잘못된 입력', async ({ page }) => {
     await openApp(page, '#/routines');
     await startFreeWorkout(page);
-    await createCustomInSession(page, '케틀벨 스윙');
-    await page.getByRole('button', { name: '케틀벨 스윙 가이드' }).click();
-    await sheet(page, '케틀벨 스윙').getByRole('button', { name: '가이드 작성' }).click();
+    await createCustomInSession(page, '내 스윙 변형');
+    await page.getByRole('button', { name: '내 스윙 변형 가이드' }).click();
+    await sheet(page, '내 스윙 변형').getByRole('button', { name: '가이드 작성' }).click();
 
     await page.getByLabel('자세 요점 (한 줄에 하나)').fill('엉덩이로 민다\n팔은 힘을 뺀다');
     await page.getByLabel('흔한 실수 (한 줄에 하나)').fill('스쿼트처럼 앉는다');
@@ -123,7 +119,7 @@ test.describe('기능 2 US4: 직접 만든 종목의 가이드 노트', () => {
     await page.getByRole('group', { name: '보조근' }).getByLabel('둔근').uncheck();
     await page.getByRole('group', { name: '보조근' }).getByLabel('햄스트링').check();
     await page.getByRole('button', { name: '저장', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '케틀벨 스윙', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '내 스윙 변형', level: 1 })).toBeVisible();
     await expect(page.locator('.guide ol li')).toHaveText(['엉덩이로 민다', '팔은 힘을 뺀다']);
     await expect(page.locator('.guide')).toContainText('주동근: 둔근');
     await expect(page.locator('.guide')).toContainText('보조근: 햄스트링');

@@ -131,6 +131,19 @@ export async function listRoutineCards(db: IDBDatabase, sort: RoutineSort = 'rec
   });
 }
 
+/** 여러 종목을 고른 순서대로 루틴 끝에 추가한다. 한도(50개)를 넘는 것은 빼고 개수를 알려 준다 (기능 5) */
+export async function appendExercises(ctx: Ctx, routineId: string, exerciseIds: string[]): Promise<{ routine: StoredRoutine; skipped: number }> {
+  const cur = await getRoutine(ctx.db, routineId);
+  if (!cur || cur.deleted) throw new Error('루틴을 찾을 수 없어요');
+  let items = cur.items;
+  let skipped = 0;
+  for (const id of exerciseIds) {
+    if (items.length >= ROUTINE_ITEMS_MAX) skipped++;
+    else items = addItem(items, id);
+  }
+  return { routine: await updateRoutine(ctx, routineId, { items }), skipped };
+}
+
 /** 루틴 맨 뒤에 종목을 추가한다 (루틴 상세의 "운동 추가") */
 export async function appendExercise(ctx: Ctx, routineId: string, exerciseId: string): Promise<StoredRoutine> {
   const cur = await getRoutine(ctx.db, routineId);

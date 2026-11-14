@@ -169,3 +169,12 @@ test('필드 추가(record-fields 3): 두 필드가 없는 레코드도 계속 �
   const res = await push([{ type: 'exercise', record: mkExercise() }, { type: 'settings', record: mkSettings() }]);
   assert.equal(res.status, 200);
 });
+
+test('기능 5: equipment·favorite 가 있는 종목이 그대로 오가고, 잘못된 값은 400', async () => {
+  const ex = mkExercise({ equipment: 'smith', favorite: true });
+  assert.equal((await push([{ type: 'exercise', record: ex }])).status, 200);
+  const got = (await pull()).changes.find((c) => c.record.id === ex.id);
+  assert.deepEqual(got?.record, ex);
+  assert.equal((await push([{ type: 'exercise', record: mkExercise({ equipment: 'trx' }) }])).status, 400);
+  assert.equal((await push([{ type: 'exercise', record: mkExercise({ favorite: 1 }) }])).status, 400);
+});
