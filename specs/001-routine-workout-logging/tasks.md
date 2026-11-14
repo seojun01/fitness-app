@@ -184,7 +184,7 @@
 - [X] T065 [P] `e2e/a11y.spec.ts`: 모든 화면에 `@axe-core/playwright` 위반 0, 320px 폭에서 가로 스크롤 없음, 터치 영역 44px 이상, 동기화 상태·검증 오류가 `aria-live`로 안내됨 (quickstart V15, 헌법 I·IV)
 - [X] T066 [P] `scripts/seed-sessions.mjs`: 세션 500개를 심는 시드 스크립트와 SC-005(1초 이내) 확인 절차를 quickstart 성능 확인 항목대로 연결
 - [X] T067 [P] `deploy/Caddyfile`(`fitness.home.arpa`, `tls internal`, `/api/*` 프록시 `flush_interval -1`, 앱 셸 `no-cache`), `deploy/fitness.service`(전용 사용자 `fitness`, `StateDirectory=fitness`, `ProtectSystem=strict`, `Environment=PORT=8081`), `deploy/install.sh`(멱등, Node 24·Caddy·앱 파일·`fitness-admin` 명령 설치) — todo-app의 `deploy/` 참고, 같은 호스트에 둘 때 기존 Caddyfile에 사이트 블록만 추가하도록 안내
-- [ ] T068 quickstart.md 수동 검증 V1~V15와 배포 확인(홈서버 설치, 폰 홈 화면 설치, V3·V7·V8 반복)을 수행하고 결과를 기록한다
+- [X] T068 quickstart.md 수동 검증 V1~V15와 배포 확인(홈서버 설치, 폰 홈 화면 설치, V3·V7·V8 반복)을 수행하고 결과를 기록한다
 - [X] T069 `npm run lint`, `npm test`, `npm run test:e2e`가 모두 통과하는지 확인하고, 헌법 점검표(plan.md Constitution Check)를 구현 결과와 대조한다
 
 ---
