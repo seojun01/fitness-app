@@ -214,9 +214,20 @@ select.input { height: var(--tap); }
 .shell[data-focus='true'] .tabs { display: none; }
 
 /* ── 진행 화면 (기능 3) ── */
-.session-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+.session-head { display: flex; align-items: center; gap: 4px; margin: calc(-1 * var(--space-2)) 0 var(--space-3); padding-top: env(safe-area-inset-top); }
+.session-back { display: inline-flex; align-items: center; justify-content: center; min-width: var(--tap); min-height: var(--tap); margin-left: calc(-1 * var(--space-2)); font-size: 1.75rem; color: var(--text); text-decoration: none; }
+.session-head .session-clock { font-size: 1.125rem; }
+.shell[data-focus='true'] .topbar { display: none; }
+.entry-page { touch-action: pan-y; }
+.entry-page[data-slide='next'] { animation: slide-next 180ms ease-out; }
+.entry-page[data-slide='prev'] { animation: slide-prev 180ms ease-out; }
+@keyframes slide-next { from { transform: translateX(24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@keyframes slide-prev { from { transform: translateX(-24px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .entry-page[data-slide] { animation: none; } }
 .session-clock { font-size: 1.5rem; min-width: 4.5ch; }
-.progress-dots { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: 0; }
+.progress-dots { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; justify-content: safe center; overflow-x: auto; scrollbar-width: none; gap: 0; }
+.progress-dots::-webkit-scrollbar { display: none; }
+.progress-dots .dot { flex: none; }
 .dot { width: var(--tap); min-height: var(--tap); padding: 0; border: none; background: none; cursor: pointer; position: relative; }
 .dot::after { content: ''; position: absolute; left: 12px; right: 12px; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: var(--border); }
 .dot[data-done='true']::after { background: var(--text-muted); }

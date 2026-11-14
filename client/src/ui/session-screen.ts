@@ -10,7 +10,7 @@ import { ValidationError, messageForField } from '../errors.ts';
 import { setExerciseMemo } from '../exercises.ts';
 import { formatClock, formatDate } from '../format.ts';
 import {
-  addEntry, addSet, completeAllSets, finishSession, getActiveSession, removeEntry, removeLastSet, removeSet, updateSet, type SetPatch,
+  addEntry, addSet, completeAllSets, finishSession, getActiveSession, removeEntry, removeLastSet, removeSet, replaceEntryExercise, updateSet, type SetPatch,
 } from '../sessions.ts';
 import { getRestSeconds, getWeightUnit, setRestSeconds } from '../settings.ts';
 import type { StoredExercise, StoredSession } from '../store/db.ts';
@@ -102,9 +102,12 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
         if (session) clock.textContent = formatClock(durationSec(session, ctx.now().getTime()));
       };
       const dots = h('nav', { class: 'progress-dots', attrs: { 'aria-label': '종목 진행' } });
+      // 한 줄 상단 바: 뒤로 · 경과 시간 · 진행 점 · 종목 추가 · 종료 (앱 상단 바는 이 화면에서 숨긴다)
       const head = h(
         'div',
         { class: 'session-head' },
+        h('h1', { class: 'visually-hidden', text: '운동 중' }),
+        h('a', { class: 'session-back', text: '‹', attrs: { href: '#/routines', 'aria-label': '뒤로' } }),
         clock,
         dots,
         h('button', { class: 'btn btn-ghost icon-btn', type: 'button', text: '+', attrs: { 'aria-label': '종목 추가' }, onClick: () => void addExercise() }),
@@ -129,6 +132,13 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
             }),
           );
         });
+        // 종목이 많으면 진행 점은 한 줄에서 가로로 넘긴다: 지금 종목이 보이게 맞춘다
+        const cur = dots.querySelector<HTMLElement>('[aria-current]');
+        if (cur) {
+          const box = dots.getBoundingClientRect();
+          const c = cur.getBoundingClientRect();
+          dots.scrollLeft += c.left + c.width / 2 - (box.left + box.width / 2);
+        }
       }
 
       // ── 휴식 타이머 ──
@@ -391,8 +401,13 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
               onClick: async () => {
                 const c = await choose(name, '이 종목을 어떻게 할까요?', [
                   { value: 'cancel', label: '취소' },
+                  { value: 'replace', label: '다른 운동으로 변경' },
                   { value: 'delete', label: '이 종목 삭제', danger: true },
                 ]);
+                if (c === 'replace') {
+                  await replaceExercise(entry);
+                  return;
+                }
                 if (c !== 'delete') return;
                 await enqueue(async () => {
                   session = await removeEntry(ctx, sessionId, entry.entryId);
@@ -467,6 +482,57 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
         renderEntry();
         window.scrollTo(0, 0);
       };
+
+      /** 이 자리의 종목을 다른 종목으로 바꾼다. 완료한 세트가 있으면 먼저 확인한다 */
+      async function replaceExercise(shown: SessionEntry): Promise<void> {
+        await chain; // 진행 중인 저장(세트 완료 등)이 끝난 뒤의 최신 상태로 판단한다
+        const entry = session!.entries.find((e) => e.entryId === shown.entryId);
+        if (!entry) return;
+        const done = entry.sets.filter((x) => x.done).length;
+        if (done > 0) {
+          const c = await choose('다른 운동으로 변경할까요?', `${entry.exerciseName}에서 완료한 ${done}세트 기록이 지워지고, 새 운동의 지난 기록으로 다시 채워져요.`, [
+            { value: 'cancel', label: '취소' },
+            { value: 'ok', label: '변경', primary: true },
+          ]);
+          if (c !== 'ok') return;
+        }
+        const [picked] = await pickExercises(ctx, { single: { exclude: entry.exerciseId } });
+        if (!picked) return;
+        await enqueue(async () => {
+          try {
+            session = await replaceEntryExercise(ctx, sessionId, entry.entryId, picked);
+            for (const e of await listAllExercises(ctx.db)) exercises.set(e.id, e);
+            renderEntry();
+            renderDots();
+            setError('replace', null);
+          } catch (e) {
+            reportFailure('replace', e);
+          }
+        });
+      }
+
+      // 좌우로 밀어 이전·다음 운동 (터치). 입력 칸·차트에서 시작한 동작과 세로 스크롤은 무시한다
+      let swipe: { x: number; y: number; id: number } | null = null;
+      entryHost.addEventListener('pointerdown', (e) => {
+        const ev = e as PointerEvent;
+        if (ev.pointerType !== 'touch' || (ev.target as Element).closest('input, textarea, select, .chart, details[open] .recent-grid')) return;
+        swipe = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+      });
+      entryHost.addEventListener('pointercancel', () => (swipe = null));
+      entryHost.addEventListener('pointerup', (e) => {
+        const ev = e as PointerEvent;
+        const start = swipe;
+        swipe = null;
+        if (!start || start.id !== ev.pointerId) return;
+        const dx = ev.clientX - start.x;
+        const dy = ev.clientY - start.y;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        const next = dx < 0 ? index + 1 : index - 1;
+        if (next < 0 || next >= session!.entries.length) return;
+        entryHost.setAttribute('data-slide', dx < 0 ? 'next' : 'prev');
+        location.hash = `#/session/${next}`;
+      });
+      entryHost.addEventListener('animationend', () => entryHost.removeAttribute('data-slide'));
 
       async function addExercise(): Promise<void> {
         const picked = await pickExercises(ctx);

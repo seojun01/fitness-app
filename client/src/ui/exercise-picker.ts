@@ -63,7 +63,9 @@ const field = (label: string, input: HTMLElement, id: string) => {
 };
 
 /** 고른 종목 id 들(고른 순서), 닫으면 빈 배열 */
-export function pickExercises(ctx: Ctx): Promise<string[]> {
+/** single: 하나만 고른다 (진행 중 운동 변경). 하단 버튼은 "이 운동으로 변경", exclude 는 목록에서 뺄 지금 종목 */
+export function pickExercises(ctx: Ctx, opts: { single?: { exclude?: string } } = {}): Promise<string[]> {
+  const single = opts.single;
   return new Promise((resolve) => {
     const titleId = `picker-${Math.random().toString(36).slice(2)}`;
     const dialog = h('dialog', { class: 'picker-full', attrs: { 'aria-labelledby': titleId } });
@@ -162,7 +164,7 @@ export function pickExercises(ctx: Ctx): Promise<string[]> {
               type: 'button',
               attrs: { 'aria-pressed': String(isSel) },
               onClick: () => {
-                selected = isSel ? selected.filter((id) => id !== ex.id) : [...selected, ex.id];
+                selected = isSel ? selected.filter((id) => id !== ex.id) : single ? [ex.id] : [...selected, ex.id];
                 renderList();
               },
             },
@@ -176,7 +178,7 @@ export function pickExercises(ctx: Ctx): Promise<string[]> {
     }
 
     function renderList(): void {
-      const shown = filterCatalog(items, { query, category, group, equipment });
+      const shown = filterCatalog(items, { query, category, group, equipment }).filter((it) => it.exercise.id !== single?.exclude);
       clear(listHost);
       clear(list);
       if (shown.length === 0) {
@@ -202,7 +204,7 @@ export function pickExercises(ctx: Ctx): Promise<string[]> {
       const n = selected.length;
       addBtn.hidden = n === 0;
       resetBtn.hidden = n === 0;
-      addBtn.textContent = `+ ${n} 운동 추가`;
+      addBtn.textContent = single ? '이 운동으로 변경' : `+ ${n} 운동 추가`;
       topBtn.hidden = body.scrollTop < 300;
     }
     body.addEventListener('scroll', () => (topBtn.hidden = body.scrollTop < 300));
@@ -259,7 +261,7 @@ export function pickExercises(ctx: Ctx): Promise<string[]> {
         try {
           const ex = await createExercise(ctx, { name: name.value, bodyPart: part.value as BodyPart, equipment: eq.value as Equipment });
           items = await loadCatalog(ctx.db);
-          selected = [...selected, ex.id];
+          selected = single ? [ex.id] : [...selected, ex.id];
           category = 'all';
           query = '';
           search.value = '';
@@ -276,7 +278,7 @@ export function pickExercises(ctx: Ctx): Promise<string[]> {
       h('button', { class: 'btn btn-ghost picker-custom', type: 'button', text: '⊕ 커스텀 운동 추가', onClick: () => void addCustom() }),
       listHost,
     );
-    dialog.append(h('h2', { class: 'visually-hidden', text: '종목 선택', attrs: { id: titleId } }), head, body, bar);
+    dialog.append(h('h2', { class: 'visually-hidden', text: single ? '변경할 종목 선택' : '종목 선택', attrs: { id: titleId } }), head, body, bar);
     dialog.addEventListener('cancel', (ev) => {
       ev.preventDefault();
       finish([]);

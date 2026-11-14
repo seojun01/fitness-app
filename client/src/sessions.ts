@@ -108,6 +108,19 @@ export async function addEntry(ctx: Ctx, sessionId: string, exerciseId: string):
   return persist(ctx, { ...cur, entries: [...cur.entries, entry] });
 }
 
+/**
+ * 이 항목의 종목을 다른 종목으로 바꾼다 (진행 중 운동 변경). 자리와 세트 수는 그대로 두고,
+ * 세트 값은 새 종목의 직전 기록으로 다시 채우며 완료 표시는 지운다 (예전 종목으로 한 세트를 새 종목 기록으로 남기지 않게).
+ */
+export async function replaceEntryExercise(ctx: Ctx, sessionId: string, entryId: string, exerciseId: string): Promise<StoredSession> {
+  const cur = await load(ctx, sessionId);
+  const old = cur.entries.find((e) => e.entryId === entryId);
+  if (!old) throw new Error('종목을 찾을 수 없어요');
+  const built = await buildEntry(ctx, exerciseId, Math.max(1, old.sets.length), await historyFor(ctx));
+  if (!built) throw new Error('종목을 찾을 수 없어요');
+  return persist(ctx, mapEntry(cur, entryId, () => ({ ...built, entryId })));
+}
+
 export const removeEntry = (ctx: Ctx, sessionId: string, entryId: string) =>
   mutate(ctx, sessionId, (s) => ({ ...s, entries: s.entries.filter((e) => e.entryId !== entryId) }));
 

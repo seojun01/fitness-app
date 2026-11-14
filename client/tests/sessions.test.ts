@@ -8,7 +8,7 @@ import { createRoutine } from '../src/routines.ts';
 import { openFitnessDb } from '../src/store/db.ts';
 import { ensureSeed, getSession } from '../src/store/records.ts';
 import {
-  ActiveSessionError, addEntry, addSet, discardSession, finishSession, getActiveSession, removeEntry, removeSet, startSession, updateSet,
+  ActiveSessionError, addEntry, addSet, discardSession, finishSession, getActiveSession, removeEntry, removeSet, replaceEntryExercise, startSession, updateSet,
 } from '../src/sessions.ts';
 import { deleteExercise } from '../src/exercises.ts';
 import { deleteRoutine } from '../src/routines.ts';
@@ -200,4 +200,35 @@ test('종목 추가는 맨 뒤에 붙는다', async () => {
   let s = await startSession(ctx, await createRoutine(ctx, 'r', [{ exerciseId: A.id, targetSets: 1 }]));
   s = await addEntry(ctx, s.id, B.id);
   assert.deepEqual(s.entries.map((e) => e.exerciseId), [A.id, B.id]);
+});
+
+test('다른 운동으로 변경: 같은 자리·세트 수를 유지하고, 새 종목의 직전 기록으로 다시 채운다', async () => {
+  const ctx = await setup();
+  // B 의 직전 기록: 30kg × 12
+  const past = await startSession(ctx, null);
+  const p1 = await addEntry(ctx, past.id, B.id);
+  const pe = p1.entries[0]!;
+  await updateSet(ctx, past.id, pe.entryId, pe.sets[0]!.setId, { weightKg: 30, reps: 12, done: true });
+  await finishSession(ctx, past.id, { ifEmpty: 'save' });
+
+  const r = await createRoutine(ctx, '루틴', [{ exerciseId: A.id, targetSets: 3 }, { exerciseId: B.id, targetSets: 1 }]);
+  const s = await startSession(ctx, r);
+  const first = s.entries[0]!;
+  await updateSet(ctx, s.id, first.entryId, first.sets[0]!.setId, { weightKg: 60, reps: 10, done: true });
+  const out = await replaceEntryExercise(ctx, s.id, first.entryId, B.id);
+  const e = out.entries[0]!;
+  assert.equal(e.entryId, first.entryId, '자리(entryId)는 그대로');
+  assert.equal(e.exerciseId, B.id);
+  assert.equal(e.exerciseName, B.name);
+  assert.equal(e.sets.length, 3, '세트 수는 그대로');
+  assert.ok(e.sets.every((x) => !x.done && x.weightKg === 30 && x.reps === 12), '완료 표시는 지우고 새 종목의 직전 값으로 채운다');
+  assert.equal(out.entries[1]!.exerciseId, B.id, '다른 항목은 그대로');
+  // 세트가 하나도 없던 항목은 1세트로
+  const s2 = await removeSet(ctx, s.id, out.entries[1]!.entryId, out.entries[1]!.sets[0]!.setId);
+  const out2 = await replaceEntryExercise(ctx, s.id, s2.entries[1]!.entryId, A.id);
+  assert.equal(out2.entries[1]!.sets.length, 1);
+  assert.ok(out2.entries[1]!.sets.every((x) => x.weightKg === null && x.reps === null), 'A 는 완료 기록이 없어 비운다');
+  // 없는 종목·지운 종목은 거부
+  await deleteExercise(ctx, SEED_EXERCISES[2]!.id);
+  await assert.rejects(replaceEntryExercise(ctx, s.id, first.entryId, SEED_EXERCISES[2]!.id));
 });
