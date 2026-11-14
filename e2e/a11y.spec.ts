@@ -18,6 +18,8 @@ async function audit(page: Page, label: string): Promise<void> {
     for (const el of els) {
       const style = getComputedStyle(el);
       if (style.visibility === 'hidden' || style.display === 'none') continue;
+      // 진행 점: 종목이 많으면 좁아진다. 같은 이동을 스와이프·"다음 운동" 버튼으로 할 수 있다 (WCAG 2.5.8 대체 수단 예외)
+      if (el.classList.contains('dot')) continue;
       let box = el.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) continue;
       // 라디오·체크박스는 감싸는 label 전체가 눌리는 영역이다

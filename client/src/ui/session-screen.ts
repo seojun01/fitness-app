@@ -132,13 +132,6 @@ export function sessionScreen(ctx: Ctx, params: Record<string, string>): Screen 
             }),
           );
         });
-        // 종목이 많으면 진행 점은 한 줄에서 가로로 넘긴다: 지금 종목이 보이게 맞춘다
-        const cur = dots.querySelector<HTMLElement>('[aria-current]');
-        if (cur) {
-          const box = dots.getBoundingClientRect();
-          const c = cur.getBoundingClientRect();
-          dots.scrollLeft += c.left + c.width / 2 - (box.left + box.width / 2);
-        }
       }
 
       // ── 휴식 타이머 ──
