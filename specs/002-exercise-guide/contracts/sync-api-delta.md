@@ -5,7 +5,8 @@
 ## `POST /api/changes`, `GET /api/changes`
 
 - `type`에 `"guideNote"`가 추가된다. 다섯 종류가 하나의 `seq` 번호 공간을 공유한다.
-- `guideNote` 레코드는 [data-model.md](../data-model.md#guidenote-사용자-가이드-노트--동기화-레코드-type-guidenote)의 필드를 담는다.
+- 배포는 서버와 앱을 함께 올린다(`install.sh`). 이전 버전 서버는 `guideNote`를 `unknown`으로 거부한다.
+- `guideNote` 레코드는 [data-model.md](../data-model.md)의 GuideNote 필드를 담는다.
 - 서버 검증은 `shared/model.ts`의 `validateRecord('guideNote', …)`를 쓴다. 클라이언트와 같은 규칙이다.
   - `id`가 UUID가 아니거나 **기본 종목 id**이면 `{field: "id", rule: "builtin_exercise"}`.
   - `cues`·`mistakes`: 10개 초과면 `max`, 항목이 공백 제거 후 0자 또는 200자 초과면 `length`.
