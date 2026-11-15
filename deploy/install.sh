@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Debian 12 / Ubuntu 24.04 서버(LXC·VM) 안에서 root 로, 저장소 루트에서 실행한다:  sudo deploy/install.sh
 # 여러 번 실행해도 안전하다(멱등). 설치: Node 24, Caddy, 앱 파일, systemd 유닛, fitness-admin 명령.
-# todo-app 과 같은 호스트에 둘 때: FITNESS_SKIP_CADDYFILE=1 sudo deploy/install.sh  (기존 Caddyfile 에 사이트 블록만 덧붙인다)
+# todo-app 과 같은 호스트여도 그냥 sudo deploy/install.sh. Caddy 는 /etc/caddy/sites/fitness.home.arpa.caddy 만 설치한다
+# (FITNESS_SKIP_CADDYFILE 은 더 이상 필요 없다. 넘겨도 무시한다)
 set -euo pipefail
 
 APP_DIR=/opt/fitness
@@ -61,27 +62,15 @@ WRAP
 chmod 0755 /usr/local/bin/fitness-admin
 
 echo "==> Caddy 설정"
-if [ "${FITNESS_SKIP_CADDYFILE:-0}" = "1" ]; then
-  # 공유 Caddyfile 은 덮어쓰지 않는다. 다만 다른 앱(todo-app)의 배포가 Caddyfile 을 통째로 바꾸면
-  # 이 앱의 사이트 블록이 사라지므로, 없으면 다시 덧붙인다 (있으면 그대로 둔다).
-  if grep -q '^fitness\.home\.arpa {' /etc/caddy/Caddyfile; then
-    echo "  공유 Caddyfile 에 fitness 사이트 블록이 있어요 (그대로 둠)"
-  else
-    cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak-$(date +%Y%m%d%H%M%S)"
-    { echo; sed -n '/^fitness\.home\.arpa {/,$p' "$SRC/deploy/Caddyfile"; } >> /etc/caddy/Caddyfile
-    echo "  공유 Caddyfile 에 fitness 사이트 블록을 덧붙였어요 (백업: /etc/caddy/Caddyfile.bak-*)"
-  fi
-  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
-else
-  install -m 0644 "$SRC/deploy/Caddyfile" /etc/caddy/Caddyfile
-fi
+# 공유 Caddyfile 을 덮어쓰지 않고 /etc/caddy/sites/fitness.home.arpa.caddy 만 설치한다 (같은 Caddy 의 todo-app 이 지워지지 않게)
+sh "$SRC/deploy/caddy-site.sh" "$SRC/deploy/Caddyfile"
 systemctl enable caddy >/dev/null
 systemctl reload caddy 2>/dev/null || systemctl restart caddy
 
 echo "==> 확인"
 sleep 2
 if curl -fsS http://127.0.0.1:8081/api/health >/dev/null; then echo "  서버: 정상 (127.0.0.1:8081)"; else echo "  서버: 응답 없음 → journalctl -u fitness -n 50" >&2; fi
-if curl -fsSkI --resolve fitness.home.arpa:443:127.0.0.1 https://fitness.home.arpa/ >/dev/null; then echo "  Caddy(HTTPS): 정상"; else echo "  Caddy(HTTPS): 응답 없음 → 사이트 블록이 Caddyfile 에 있는지, journalctl -u caddy -n 50" >&2; fi
+if curl -fsSkI --resolve fitness.home.arpa:443:127.0.0.1 https://fitness.home.arpa/ >/dev/null; then echo "  Caddy(HTTPS): 정상"; else echo "  Caddy(HTTPS): 응답 없음 → ls /etc/caddy/sites, journalctl -u caddy -n 50" >&2; fi
 
 cat <<'DONE'
 
